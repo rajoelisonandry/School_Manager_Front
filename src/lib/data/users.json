@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "admin",
+      "password": "admin123",
+      "role": "admin",
+      "name": "Administrateur",
+      "email": "admin@ecole.com",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}

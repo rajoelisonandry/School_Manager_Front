@@ -1,0 +1,154 @@
+{
+  "tuitions": [
+    {
+      "id": "1",
+      "studentId": "1",
+      "schoolYear": "2024-2025",
+      "monthlyPayments": [
+        {
+          "month": "septembre",
+          "amount": 150,
+          "status": "paid",
+          "paymentDate": "2024-09-05"
+        },
+        {
+          "month": "octobre",
+          "amount": 150,
+          "status": "paid",
+          "paymentDate": "2024-10-03"
+        },
+        {
+          "month": "novembre",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "décembre",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "janvier",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "février",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "mars",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "avril",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "mai",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "juin",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "juillet",
+          "amount": 150,
+          "status": "pending",
+          "paymentDate": null
+        }
+      ],
+      "totalAmount": 1650,
+      "totalPaid": 300
+    },
+    {
+      "id": "2",
+      "studentId": "2",
+      "schoolYear": "2024-2025",
+      "monthlyPayments": [
+        {
+          "month": "septembre",
+          "amount": 180,
+          "status": "paid",
+          "paymentDate": "2024-09-10"
+        },
+        {
+          "month": "octobre",
+          "amount": 180,
+          "status": "paid",
+          "paymentDate": "2024-10-08"
+        },
+        {
+          "month": "novembre",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "décembre",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "janvier",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "février",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "mars",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "avril",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "mai",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "juin",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        },
+        {
+          "month": "juillet",
+          "amount": 180,
+          "status": "pending",
+          "paymentDate": null
+        }
+      ],
+      "totalAmount": 1980,
+      "totalPaid": 360
+    }
+  ]
+}

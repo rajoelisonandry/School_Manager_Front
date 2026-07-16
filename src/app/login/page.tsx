@@ -1,37 +1,79 @@
-'use client';
-import Button from "@/components/Button";
-import Input from "@/components/Input"
-import Image from "next/image"
-import React, { useState } from "react"
+"use client";
 
-const LoginPage = () => {
-    const [user, setUser] = useState({username:"", password:""});
+import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log(e.target.value);
-    };
+export default function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (login(username, password)) {
+      router.push("/dashboard");
+    } else {
+      setError("Identifiants incorrects");
+    }
+  };
+
   return (
-    <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('/assets/tanana.jpg')" }}
-    >
-      <div className="bg-black/50 min-h-screen flex items-center justify-center ">
-        <div className="bg-white rounded-xl p-3">
-            <Image
-                src="/assets/logo.png"
-                alt="logo"
-                width={300}
-                height={200}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-primary mb-2">Au Bel Enfant</h1>
+          <p className="text-muted-foreground">Système de Gestion d'École</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium mb-2">
+              Nom d'utilisateur
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              required
             />
-      <h2 className="text-center text-[var(--primary)]">Tongasoa</h2>
-      <form action="" method="post" className="w-full flex flex-col space-y-4">
-            <Input onChange={handleInputChange} value={user.username} name="username" />
-            <Input onChange={handleInputChange} value={user.password} name="password" />
-            <Button text="Login ->" bgColor="[var(--primary)]" size="small" />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium mb-2">
+              Mot de passe
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="text-destructive text-sm text-center">{error}</div>
+          )}
+
+          <Button type="submit" className="w-full">
+            Se connecter
+          </Button>
         </form>
-      </div>
+
+        <div className="mt-6 text-center text-sm text-muted-foreground">
+          <p>Identifiants de démonstration:</p>
+          <p className="font-medium">admin / admin123</p>
+        </div>
       </div>
     </div>
-  )
+  );
 }
-export default LoginPage

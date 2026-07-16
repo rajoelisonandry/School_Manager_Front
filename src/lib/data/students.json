@@ -1,0 +1,40 @@
+{
+  "students": [
+    {
+      "id": "1",
+      "matricule": "ABE-2023-0001",
+      "firstName": "Jean",
+      "lastName": "Dupont",
+      "dateOfBirth": "2010-05-15",
+      "placeOfBirth": "Antananarivo",
+      "classId": "3",
+      "gender": "M",
+      "address": "123 Rue de l'École",
+      "phones": ["0123456789"],
+      "fatherName": "Paul Dupont",
+      "fatherProfession": "Ingénieur",
+      "motherName": "Marie Dupont",
+      "motherProfession": "Enseignante",
+      "enrollmentDate": "2023-09-01",
+      "status": "active"
+    },
+    {
+      "id": "2",
+      "matricule": "ABE-2023-0002",
+      "firstName": "Marie",
+      "lastName": "Martin",
+      "dateOfBirth": "2009-08-20",
+      "placeOfBirth": "Fianarantsoa",
+      "classId": "4",
+      "gender": "F",
+      "address": "456 Avenue des Élèves",
+      "phones": ["0987654321", "0345678912"],
+      "fatherName": "Pierre Martin",
+      "fatherProfession": "Commerçant",
+      "motherName": "Sophie Martin",
+      "motherProfession": "Infirmière",
+      "enrollmentDate": "2023-09-01",
+      "status": "active"
+    }
+  ]
+}

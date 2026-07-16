@@ -1,0 +1,102 @@
+{
+  "classes": [
+    {
+      "id": "1",
+      "name": "13 ème",
+      "level": "primaire",
+      "capacity": 30,
+      "currentStudents": 0
+    },
+    {
+      "id": "2",
+      "name": "12 ème",
+      "level": "primaire",
+      "capacity": 30,
+      "currentStudents": 0
+    },
+    {
+      "id": "3",
+      "name": "11 ème",
+      "level": "primaire",
+      "capacity": 30,
+      "currentStudents": 1
+    },
+    {
+      "id": "4",
+      "name": "10 ème",
+      "level": "primaire",
+      "capacity": 30,
+      "currentStudents": 1
+    },
+    {
+      "id": "5",
+      "name": "9 ème",
+      "level": "collège",
+      "capacity": 35,
+      "currentStudents": 0
+    },
+    {
+      "id": "6",
+      "name": "8 ème",
+      "level": "collège",
+      "capacity": 35,
+      "currentStudents": 0
+    },
+    {
+      "id": "7",
+      "name": "7 ème",
+      "level": "collège",
+      "capacity": 35,
+      "currentStudents": 0
+    },
+    {
+      "id": "8",
+      "name": "6 ème",
+      "level": "collège",
+      "capacity": 35,
+      "currentStudents": 0
+    },
+    {
+      "id": "9",
+      "name": "5 ème",
+      "level": "collège",
+      "capacity": 35,
+      "currentStudents": 0
+    },
+    {
+      "id": "10",
+      "name": "4 ème",
+      "level": "collège",
+      "capacity": 35,
+      "currentStudents": 0
+    },
+    {
+      "id": "11",
+      "name": "3 ème",
+      "level": "collège",
+      "capacity": 35,
+      "currentStudents": 0
+    },
+    {
+      "id": "12",
+      "name": "2nde",
+      "level": "lycée",
+      "capacity": 30,
+      "currentStudents": 0
+    },
+    {
+      "id": "13",
+      "name": "1ère",
+      "level": "lycée",
+      "capacity": 30,
+      "currentStudents": 0
+    },
+    {
+      "id": "14",
+      "name": "Terminale",
+      "level": "lycée",
+      "capacity": 30,
+      "currentStudents": 0
+    }
+  ]
+}

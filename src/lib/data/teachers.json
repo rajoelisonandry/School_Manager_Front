@@ -1,0 +1,40 @@
+{
+  "teachers": [
+    {
+      "id": "1",
+      "firstName": "Pierre",
+      "lastName": "Lefebvre",
+      "email": "pierre.lefebvre@ecole.com",
+      "phone": "0612345678",
+      "specialty": "Mathématiques",
+      "hourlyRate": 35,
+      "classesTaught": ["3", "4", "5", "6"],
+      "hireDate": "2020-09-01",
+      "status": "active"
+    },
+    {
+      "id": "2",
+      "firstName": "Sophie",
+      "lastName": "Bernard",
+      "email": "sophie.bernard@ecole.com",
+      "phone": "0623456789",
+      "specialty": "Français",
+      "hourlyRate": 32,
+      "classesTaught": ["1", "2", "3", "4"],
+      "hireDate": "2019-09-01",
+      "status": "active"
+    },
+    {
+      "id": "3",
+      "firstName": "Marc",
+      "lastName": "Dubois",
+      "email": "marc.dubois@ecole.com",
+      "phone": "0634567890",
+      "specialty": "Sciences",
+      "hourlyRate": 38,
+      "classesTaught": ["5", "6", "7", "8", "9", "10", "11"],
+      "hireDate": "2018-09-01",
+      "status": "active"
+    }
+  ]
+}

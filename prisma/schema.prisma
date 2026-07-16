@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      String
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Class {
+  id              String    @id @default(uuid())
+  name            String
+  level           String
+  capacity        Int
+  currentStudents Int       @default(0)
+  students        Student[]
+  teachers        TeacherClass[]
+  createdAt       DateTime  @default(now())
+}
+
+model Student {
+  id               String    @id @default(uuid())
+  matricule        String    @unique
+  firstName        String
+  lastName         String
+  dateOfBirth      DateTime
+  placeOfBirth     String
+  gender           String
+  address          String
+  phones           String[]
+  fatherName       String
+  fatherProfession String
+  motherName       String
+  motherProfession String
+  enrollmentDate   DateTime
+  status           String    @default("active")
+  classId          String
+  class            Class     @relation(fields: [classId], references: [id])
+  tuitions         Tuition[]
+  createdAt        DateTime  @default(now())
+}
+
+model Teacher {
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String   @unique
+  phone        String
+  specialty    String
+  hourlyRate   Float
+  hireDate     DateTime
+  status       String   @default("active")
+  classes      TeacherClass[]
+  createdAt    DateTime @default(now())
+}
+
+model TeacherClass {
+  id        String   @id @default(uuid())
+  teacherId String
+  classId   String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  class     Class    @relation(fields: [classId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([teacherId, classId])
+}
+
+model Tuition {
+  id          String   @id @default(uuid())
+  studentId   String
+  schoolYear  String
+  totalAmount Float
+  totalPaid   Float    @default(0)
+  student     Student  @relation(fields: [studentId], references: [id])
+  payments    Payment[]
+  createdAt   DateTime @default(now())
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  tuitionId   String
+  month       String
+  amount      Float
+  status      String
+  paymentDate DateTime?
+  tuition     Tuition  @relation(fields: [tuitionId], references: [id])
+  createdAt   DateTime @default(now())
+}
