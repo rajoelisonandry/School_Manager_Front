@@ -200,7 +200,9 @@ export default function UsersPage() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nom Complet</label>
+                  <label className="text-sm font-medium">
+                    Nom Complet<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     name="name"
                     value={formData.name}
@@ -209,7 +211,9 @@ export default function UsersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nom d'utilisateur</label>
+                  <label className="text-sm font-medium">
+                    Nom d&apos;utilisateur<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     name="username"
                     value={formData.username}
@@ -218,7 +222,9 @@ export default function UsersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
+                  <label className="text-sm font-medium">
+                    Email<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     type="email"
                     name="email"
@@ -229,7 +235,9 @@ export default function UsersPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
-                    Mot de passe {editingUser && "(laisser vide pour ne pas changer)"}
+                    Mot de passe
+                    {!editingUser && <span className="text-destructive">*</span>}{" "}
+                    {editingUser && "(laisser vide pour ne pas changer)"}
                   </label>
                   <Input
                     type="password"
@@ -269,7 +277,10 @@ export default function UsersPage() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
+              <p className="text-xs text-muted-foreground mt-3">
+                <span className="text-destructive">*</span> Champs obligatoires
+              </p>
+              <DialogFooter className="mt-2">
                 <Button type="submit">
                   {editingUser ? "Modifier" : "Créer"}
                 </Button>

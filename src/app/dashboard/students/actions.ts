@@ -1,6 +1,6 @@
 'use server'
 
-import { backendFetch } from '@/lib/backend/http'
+import { backendFetch, backendUpload } from '@/lib/backend/http'
 import { revalidatePath } from 'next/cache'
 
 interface BackendStudent {
@@ -16,6 +16,11 @@ interface BackendStudent {
   fatherProfession?: string
   motherName?: string
   motherProfession?: string
+  guardianName?: string
+  guardianProfession?: string
+  identityPhotoUrl?: string
+  birthCertificateUrl?: string
+  residenceCertificateUrl?: string
   address: string
   phones: string[]
   schoolClass?: { id: number }
@@ -35,6 +40,11 @@ export interface StudentInput {
   fatherProfession?: string
   motherName?: string
   motherProfession?: string
+  guardianName?: string
+  guardianProfession?: string
+  identityPhotoUrl?: string
+  birthCertificateUrl?: string
+  residenceCertificateUrl?: string
   classId: string
 }
 
@@ -54,6 +64,11 @@ function toFrontStudent(student: BackendStudent) {
     fatherProfession: student.fatherProfession ?? '',
     motherName: student.motherName ?? '',
     motherProfession: student.motherProfession ?? '',
+    guardianName: student.guardianName ?? '',
+    guardianProfession: student.guardianProfession ?? '',
+    identityPhotoUrl: student.identityPhotoUrl ?? '',
+    birthCertificateUrl: student.birthCertificateUrl ?? '',
+    residenceCertificateUrl: student.residenceCertificateUrl ?? '',
     classId: student.schoolClass ? String(student.schoolClass.id) : '',
   }
 }
@@ -94,4 +109,8 @@ export async function deleteStudent(id: string) {
     method: 'DELETE',
   })
   revalidatePath('/dashboard/students')
+}
+
+export async function uploadStudentDocument(formData: FormData) {
+  return backendUpload('/uploads', formData)
 }

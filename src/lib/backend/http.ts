@@ -36,3 +36,24 @@ export async function backendFetch<T>(
 
   return res.json() as Promise<T>;
 }
+
+export async function backendUpload(
+  path: string,
+  formData: FormData,
+): Promise<{ url: string }> {
+  const res = await fetch(`${BACKEND_API_URL}${path}`, {
+    method: 'POST',
+    body: formData,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendError(
+      `Backend request failed (${res.status}): ${body}`,
+      res.status,
+    );
+  }
+
+  return res.json() as Promise<{ url: string }>;
+}

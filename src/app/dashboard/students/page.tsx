@@ -35,9 +35,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Plus, Pencil, Trash2, Search, X, Eye, Info, UserX, FileDown } from "lucide-react";
-import { getStudents, createStudent, updateStudent, deleteStudent } from "./actions";
+import { getStudents, createStudent, updateStudent, deleteStudent, uploadStudentDocument } from "./actions";
 import { getClasses } from "../classes/actions";
 import { exportStudentsPdf } from "@/lib/pdf/students-pdf";
+import { DocumentUploadField } from "@/components/document-upload-field";
+import { backendFileUrl } from "@/lib/backend/public-url";
 
 interface Student {
   id: string;
@@ -55,6 +57,11 @@ interface Student {
   fatherProfession: string;
   motherName: string;
   motherProfession: string;
+  guardianName: string;
+  guardianProfession: string;
+  identityPhotoUrl: string;
+  birthCertificateUrl: string;
+  residenceCertificateUrl: string;
 }
 
 interface ClassOption {
@@ -79,6 +86,11 @@ const emptyFormData: Partial<Student> = {
   fatherProfession: "",
   motherName: "",
   motherProfession: "",
+  guardianName: "",
+  guardianProfession: "",
+  identityPhotoUrl: "",
+  birthCertificateUrl: "",
+  residenceCertificateUrl: "",
 };
 
 export default function StudentsPage() {
@@ -174,7 +186,9 @@ export default function StudentsPage() {
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
-    setFormData(student);
+    const { id, ...editableFields } = student;
+    void id;
+    setFormData(editableFields);
     setIsDialogOpen(true);
   };
 
@@ -252,6 +266,7 @@ export default function StudentsPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-1.5">
                       Matricule
+                      <span className="text-destructive">*</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
@@ -269,7 +284,9 @@ export default function StudentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Classe</label>
+                    <label className="text-sm font-medium">
+                      Classe<span className="text-destructive">*</span>
+                    </label>
                     <Select
                       value={formData.classId}
                       onValueChange={(value) => handleSelectChange("classId", value)}
@@ -290,7 +307,9 @@ export default function StudentsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Prénom</label>
+                    <label className="text-sm font-medium">
+                      Prénom<span className="text-destructive">*</span>
+                    </label>
                     <Input
                       name="firstName"
                       value={formData.firstName}
@@ -299,7 +318,9 @@ export default function StudentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Nom</label>
+                    <label className="text-sm font-medium">
+                      Nom<span className="text-destructive">*</span>
+                    </label>
                     <Input
                       name="lastName"
                       value={formData.lastName}
@@ -310,7 +331,9 @@ export default function StudentsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Date de Naissance</label>
+                    <label className="text-sm font-medium">
+                      Date de Naissance<span className="text-destructive">*</span>
+                    </label>
                     <Input
                       type="date"
                       name="dateOfBirth"
@@ -320,7 +343,9 @@ export default function StudentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Lieu de Naissance</label>
+                    <label className="text-sm font-medium">
+                      Lieu de Naissance<span className="text-destructive">*</span>
+                    </label>
                     <Input
                       name="placeOfBirth"
                       value={formData.placeOfBirth}
@@ -448,8 +473,71 @@ export default function StudentsPage() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      Nom du Tuteur
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          À renseigner si un tuteur (autre que les parents) s&apos;occupe de l&apos;élève
+                        </TooltipContent>
+                      </Tooltip>
+                    </label>
+                    <Input
+                      name="guardianName"
+                      value={formData.guardianName}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Profession du Tuteur</label>
+                    <Input
+                      name="guardianProfession"
+                      value={formData.guardianProfession}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <p className="text-sm font-medium flex items-center gap-1.5 pt-2">
+                    Documents
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-56">
+                        Facultatif. Sur mobile, vous pouvez prendre une photo directement
+                      </TooltipContent>
+                    </Tooltip>
+                  </p>
+                </div>
+                <DocumentUploadField
+                  label="Photo d'identité"
+                  value={formData.identityPhotoUrl ?? ""}
+                  onChange={(url) => setFormData((prev) => ({ ...prev, identityPhotoUrl: url }))}
+                  uploadAction={uploadStudentDocument}
+                />
+                <DocumentUploadField
+                  label="Bulletin de naissance"
+                  value={formData.birthCertificateUrl ?? ""}
+                  onChange={(url) => setFormData((prev) => ({ ...prev, birthCertificateUrl: url }))}
+                  uploadAction={uploadStudentDocument}
+                />
+                <DocumentUploadField
+                  label="Certificat de résidence"
+                  value={formData.residenceCertificateUrl ?? ""}
+                  onChange={(url) => setFormData((prev) => ({ ...prev, residenceCertificateUrl: url }))}
+                  uploadAction={uploadStudentDocument}
+                />
               </div>
-              <DialogFooter>
+              <p className="text-xs text-muted-foreground mt-3">
+                <span className="text-destructive">*</span> Champs obligatoires
+              </p>
+              <DialogFooter className="mt-2">
                 <Button type="submit">
                   {editingStudent ? "Modifier" : "Créer"}
                 </Button>
@@ -530,6 +618,54 @@ export default function StudentsPage() {
                     </p>
                   </div>
                 </div>
+
+                {viewingStudent.guardianName && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                      Tuteur
+                    </h3>
+                    <p className="text-sm">{viewingStudent.guardianName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {viewingStudent.guardianProfession || "-"}
+                    </p>
+                  </div>
+                )}
+
+                {(viewingStudent.identityPhotoUrl ||
+                  viewingStudent.birthCertificateUrl ||
+                  viewingStudent.residenceCertificateUrl) && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                      Documents
+                    </h3>
+                    <div className="flex gap-3 flex-wrap">
+                      {[
+                        { label: "Photo d'identité", url: viewingStudent.identityPhotoUrl },
+                        { label: "Bulletin de naissance", url: viewingStudent.birthCertificateUrl },
+                        { label: "Certificat de résidence", url: viewingStudent.residenceCertificateUrl },
+                      ]
+                        .filter((doc) => doc.url)
+                        .map((doc) => (
+                          <a
+                            key={doc.label}
+                            href={backendFileUrl(doc.url) ?? undefined}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <img
+                              src={backendFileUrl(doc.url) ?? undefined}
+                              alt={doc.label}
+                              className="h-16 w-16 rounded-md object-cover border border-border"
+                            />
+                            <span className="text-xs text-muted-foreground max-w-16 text-center">
+                              {doc.label}
+                            </span>
+                          </a>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button

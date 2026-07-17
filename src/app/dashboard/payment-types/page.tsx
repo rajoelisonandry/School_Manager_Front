@@ -208,7 +208,9 @@ export default function PaymentTypesPage() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nom</label>
+                  <label className="text-sm font-medium">
+                    Nom<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     name="name"
                     value={formData.name}
@@ -218,7 +220,9 @@ export default function PaymentTypesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Montant (Ariary)</label>
+                  <label className="text-sm font-medium">
+                    Montant (Ariary)<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     type="number"
                     name="amount"
@@ -262,7 +266,10 @@ export default function PaymentTypesPage() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
+              <p className="text-xs text-muted-foreground mt-3">
+                <span className="text-destructive">*</span> Champs obligatoires
+              </p>
+              <DialogFooter className="mt-2">
                 <Button type="submit">
                   {editingType ? "Modifier" : "Créer"}
                 </Button>

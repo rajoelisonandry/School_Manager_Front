@@ -8,10 +8,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Users, GraduationCap, Wallet, TrendingUp, Info } from "lucide-react";
+import { Users, GraduationCap, Wallet, TrendingUp, Info, BarChart3 } from "lucide-react";
 import { getStudents } from "./students/actions";
 import { getClasses } from "./classes/actions";
 import { getPayments } from "./payments/actions";
+import { CollectedPaymentsChart } from "@/components/collected-payments-chart";
 
 function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [recentPayments, setRecentPayments] = useState<
     Awaited<ReturnType<typeof getPayments>>
   >([]);
+  const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPayments>>>([]);
   const [totalCollected, setTotalCollected] = useState(0);
   const [totalExpected, setTotalExpected] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +54,7 @@ export default function DashboardPage() {
       setStudentsByLevel(byLevel);
 
       setRecentPayments(payments.slice(0, 5));
+      setPayments(payments);
       setTotalCollected(payments.reduce((sum, p) => sum + p.amountPaid, 0));
       setTotalExpected(payments.reduce((sum, p) => sum + p.amountDue, 0));
 
@@ -298,6 +301,29 @@ export default function DashboardPage() {
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+      )}
+
+      {/* Collected Payments Over Time */}
+      {canSeeStats && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Paiements Collectés dans le Temps
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                Montant collecté regroupé par jour, semaine ou mois
+              </TooltipContent>
+            </Tooltip>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CollectedPaymentsChart payments={payments} />
         </CardContent>
       </Card>
       )}

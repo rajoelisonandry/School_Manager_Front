@@ -98,7 +98,7 @@ export default function ClassesPage() {
 
   const handleEdit = (cls: Class) => {
     setEditingClass(cls);
-    setFormData(cls);
+    setFormData({ name: cls.name, level: cls.level, capacity: cls.capacity });
     setIsDialogOpen(true);
   };
 
@@ -169,7 +169,9 @@ export default function ClassesPage() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nom de la Classe</label>
+                  <label className="text-sm font-medium">
+                    Nom de la Classe<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     name="name"
                     value={formData.name}
@@ -195,7 +197,9 @@ export default function ClassesPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Capacité</label>
+                  <label className="text-sm font-medium">
+                    Capacité<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     type="number"
                     name="capacity"
@@ -206,7 +210,10 @@ export default function ClassesPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <p className="text-xs text-muted-foreground mt-3">
+                <span className="text-destructive">*</span> Champs obligatoires
+              </p>
+              <DialogFooter className="mt-2">
                 <Button type="submit">
                   {editingClass ? "Modifier" : "Créer"}
                 </Button>

@@ -34,8 +34,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors } from "lucide-react";
-import { getPayments, createPayment, deletePayment } from "./actions";
+import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X } from "lucide-react";
+import { getPayments, createPaymentBatch, deletePayment } from "./actions";
 import { getStudents } from "../students/actions";
 import { getPaymentTypes } from "../payment-types/actions";
 import { getClasses } from "../classes/actions";
@@ -44,6 +44,7 @@ import { currentSchoolYear, schoolYearOptions, schoolYearStart, yearForMonth } f
 
 interface Payment {
   id: string;
+  receiptNumber: string;
   studentId: string;
   studentName: string;
   studentMatricule: string;
@@ -83,23 +84,32 @@ interface PaymentTypeRateOption {
   amount: number;
 }
 
+interface LineItem {
+  paymentTypeId: string;
+  month: string;
+  amountDue: number;
+  amountPaid: number;
+}
+
+const emptyLineItem: LineItem = { paymentTypeId: "", month: "", amountDue: 0, amountPaid: 0 };
+
 const emptyFormData = {
   classId: "",
   studentId: "",
-  paymentTypeId: "",
-  month: "",
   schoolYear: currentSchoolYear(),
-  year: yearForMonth(currentSchoolYear(), ""),
-  amountDue: 0,
-  amountPaid: 0,
   paymentDate: new Date().toISOString().split("T")[0],
+  items: [{ ...emptyLineItem }] as LineItem[],
 };
 
 function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
 }
 
-function ReceiptCopy({ payment, label }: { payment: Payment; label: string }) {
+function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }) {
+  const first = payments[0];
+  const totalDue = payments.reduce((sum, p) => sum + p.amountDue, 0);
+  const totalPaid = payments.reduce((sum, p) => sum + p.amountPaid, 0);
+
   return (
     <div className="font-mono text-xs text-foreground">
       <div className="text-center">
@@ -112,55 +122,55 @@ function ReceiptCopy({ payment, label }: { payment: Payment; label: string }) {
       <div className="my-2 border-t border-dashed border-foreground/30" />
       <p className="text-center font-semibold">REÇU DE PAIEMENT</p>
       <p className="text-center text-muted-foreground">
-        N° {payment.id.padStart(6, "0")}
+        N° {first.receiptNumber.padStart(6, "0")}
       </p>
       <div className="my-2 border-t border-dashed border-foreground/30" />
 
       <div className="space-y-1">
         <div className="flex justify-between gap-2">
           <span>Élève</span>
-          <span className="text-right">{payment.studentName}</span>
+          <span className="text-right">{first.studentName}</span>
         </div>
         <div className="flex justify-between gap-2">
           <span>Matricule</span>
-          <span>{payment.studentMatricule}</span>
-        </div>
-      </div>
-
-      <div className="my-2 border-t border-dashed border-foreground/30" />
-
-      <div className="space-y-1">
-        <div className="flex justify-between gap-2">
-          <span>Type</span>
-          <span className="text-right">{payment.paymentTypeName}</span>
-        </div>
-        <div className="flex justify-between gap-2">
-          <span>Période</span>
-          <span className="capitalize">
-            {payment.month} {payment.year}
-          </span>
+          <span>{first.studentMatricule}</span>
         </div>
         <div className="flex justify-between gap-2">
           <span>Date</span>
-          <span>{new Date(payment.paymentDate).toLocaleDateString("fr-FR")}</span>
+          <span>{new Date(first.paymentDate).toLocaleDateString("fr-FR")}</span>
         </div>
       </div>
 
       <div className="my-2 border-t border-dashed border-foreground/30" />
 
+      <div className="space-y-1.5">
+        {payments.map((p) => (
+          <div key={p.id}>
+            <div className="flex justify-between gap-2">
+              <span>{p.paymentTypeName}</span>
+              <span>{formatAriary(p.amountPaid)}</span>
+            </div>
+            <div className="flex justify-between gap-2 text-[10px] text-muted-foreground">
+              <span className="capitalize">
+                {p.month} {p.year}
+              </span>
+              {p.amountPaid < p.amountDue && <span>dû {formatAriary(p.amountDue)}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="my-2 border-t border-dashed border-foreground/30" />
+
       <div className="space-y-1">
-        <div className="flex justify-between gap-2">
-          <span>Montant Dû</span>
-          <span>{formatAriary(payment.amountDue)}</span>
-        </div>
         <div className="flex justify-between gap-2 font-bold">
-          <span>Montant Payé</span>
-          <span>{formatAriary(payment.amountPaid)}</span>
+          <span>Total Payé</span>
+          <span>{formatAriary(totalPaid)}</span>
         </div>
-        {payment.amountDue > payment.amountPaid && (
+        {totalDue > totalPaid && (
           <div className="flex justify-between gap-2">
             <span>Reste</span>
-            <span>{formatAriary(payment.amountDue - payment.amountPaid)}</span>
+            <span>{formatAriary(totalDue - totalPaid)}</span>
           </div>
         )}
       </div>
@@ -168,7 +178,7 @@ function ReceiptCopy({ payment, label }: { payment: Payment; label: string }) {
       <div className="my-2 border-t border-dashed border-foreground/30" />
 
       <p className="text-center text-[10px] text-muted-foreground">
-        Enregistré par {payment.recordedByName ?? "-"}
+        Enregistré par {first.recordedByName ?? "-"}
       </p>
 
       <div className="my-2 border-t border-dashed border-foreground/30" />
@@ -190,7 +200,7 @@ export default function PaymentsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState(emptyFormData);
   const [isLoading, setIsLoading] = useState(true);
-  const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
+  const [receiptPayments, setReceiptPayments] = useState<Payment[] | null>(null);
 
   useEffect(() => {
     loadData();
@@ -237,53 +247,103 @@ export default function PaymentsPage() {
     : students;
 
   const handleClassChange = (classId: string) => {
-    setFormData((prev) => {
-      const amount = prev.paymentTypeId
-        ? resolveAmount(classId, prev.paymentTypeId, schoolYearStart(prev.schoolYear))
-        : prev.amountDue;
-      return { ...prev, classId, studentId: "", amountDue: amount, amountPaid: amount };
-    });
-  };
-
-  const handlePaymentTypeChange = (paymentTypeId: string) => {
-    setFormData((prev) => {
-      const amount = resolveAmount(prev.classId, paymentTypeId, schoolYearStart(prev.schoolYear));
-      return { ...prev, paymentTypeId, amountDue: amount, amountPaid: amount };
-    });
-  };
-
-  const handleMonthChange = (month: string) => {
-    setFormData((prev) => {
-      const year = yearForMonth(prev.schoolYear, month);
-      const amount = prev.paymentTypeId
-        ? resolveAmount(prev.classId, prev.paymentTypeId, schoolYearStart(prev.schoolYear))
-        : prev.amountDue;
-      return { ...prev, month, year, amountDue: amount, amountPaid: amount };
-    });
+    setFormData((prev) => ({
+      ...prev,
+      classId,
+      studentId: "",
+      items: prev.items.map((item) =>
+        item.paymentTypeId
+          ? {
+              ...item,
+              amountDue: resolveAmount(classId, item.paymentTypeId, schoolYearStart(prev.schoolYear)),
+              amountPaid: resolveAmount(classId, item.paymentTypeId, schoolYearStart(prev.schoolYear)),
+            }
+          : item
+      ),
+    }));
   };
 
   const handleSchoolYearChange = (schoolYear: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      schoolYear,
+      items: prev.items.map((item) =>
+        item.paymentTypeId
+          ? {
+              ...item,
+              amountDue: resolveAmount(prev.classId, item.paymentTypeId, schoolYearStart(schoolYear)),
+              amountPaid: resolveAmount(prev.classId, item.paymentTypeId, schoolYearStart(schoolYear)),
+            }
+          : item
+      ),
+    }));
+  };
+
+  const handleItemTypeChange = (index: number, paymentTypeId: string) => {
     setFormData((prev) => {
-      const year = yearForMonth(schoolYear, prev.month);
-      const amount = prev.paymentTypeId
-        ? resolveAmount(prev.classId, prev.paymentTypeId, schoolYearStart(schoolYear))
-        : prev.amountDue;
-      return { ...prev, schoolYear, year, amountDue: amount, amountPaid: amount };
+      const amount = resolveAmount(prev.classId, paymentTypeId, schoolYearStart(prev.schoolYear));
+      return {
+        ...prev,
+        items: prev.items.map((item, i) =>
+          i === index ? { ...item, paymentTypeId, amountDue: amount, amountPaid: amount } : item
+        ),
+      };
     });
   };
+
+  const handleItemMonthChange = (index: number, month: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.map((item, i) => (i === index ? { ...item, month } : item)),
+    }));
+  };
+
+  const handleItemAmountChange = (
+    index: number,
+    field: "amountDue" | "amountPaid",
+    value: number
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    }));
+  };
+
+  const addItem = () => {
+    setFormData((prev) => ({ ...prev, items: [...prev.items, { ...emptyLineItem }] }));
+  };
+
+  const removeItem = (index: number) => {
+    setFormData((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
+  };
+
+  const totalPaidInForm = formData.items.reduce((sum, item) => sum + item.amountPaid, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { classId, schoolYear, ...paymentData } = formData;
-    void classId;
-    void schoolYear;
-    const created = await createPayment({ ...paymentData, recordedByUserId: currentUser?.id });
+    const created = await createPaymentBatch({
+      studentId: formData.studentId,
+      recordedByUserId: currentUser?.id,
+      paymentDate: formData.paymentDate,
+      items: formData.items.map((item) => ({
+        paymentTypeId: item.paymentTypeId,
+        month: item.month,
+        year: yearForMonth(formData.schoolYear, item.month),
+        amountDue: item.amountDue,
+        amountPaid: item.amountPaid,
+      })),
+    });
 
     resetForm();
     setIsDialogOpen(false);
     loadData();
-    setReceiptPayment(created);
+    setReceiptPayments(created);
+  };
+
+  const handleReprint = (payment: Payment) => {
+    const group = payments.filter((p) => p.receiptNumber === payment.receiptNumber);
+    setReceiptPayments(group.length > 0 ? group : [payment]);
   };
 
   const handlePrintReceipt = () => {
@@ -357,11 +417,12 @@ export default function PaymentsPage() {
               Nouveau Paiement
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Enregistrer un Paiement</DialogTitle>
               <DialogDescription>
-                Enregistrer un paiement pour un élève
+                Un même reçu peut regrouper plusieurs types de frais (Écolage, Frais
+                généraux, Excursion...)
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -392,7 +453,9 @@ export default function PaymentsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Élève</label>
+                  <label className="text-sm font-medium">
+                    Élève<span className="text-destructive">*</span>
+                  </label>
                   <Select
                     value={formData.studentId}
                     onValueChange={(value) =>
@@ -418,127 +481,136 @@ export default function PaymentsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Type de Paiement</label>
-                  <Select
-                    value={formData.paymentTypeId}
-                    onValueChange={handlePaymentTypeChange}
-                    required
-                  >
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    Année scolaire
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-56">
+                        Septembre à Décembre comptent pour la première année,
+                        Janvier à Juin pour la seconde
+                      </TooltipContent>
+                    </Tooltip>
+                  </label>
+                  <Select value={formData.schoolYear} onValueChange={handleSchoolYearChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un type" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {paymentTypes.map((type) => {
-                        const amount = formData.classId
-                          ? resolveAmount(
-                              formData.classId,
-                              type.id,
-                              schoolYearStart(formData.schoolYear)
-                            )
-                          : type.amount;
-                        return (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name} - {formatAriary(amount)}
-                          </SelectItem>
-                        );
-                      })}
+                      {schoolYearOptions().map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Période (ex: Septembre)</label>
-                    <Input
-                      value={formData.month}
-                      onChange={(e) => handleMonthChange(e.target.value)}
-                      placeholder="Mois ou période"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-1.5">
-                      Année scolaire
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-56">
-                          Septembre à Décembre comptent pour la première année,
-                          Janvier à Juin pour la seconde
-                        </TooltipContent>
-                      </Tooltip>
-                    </label>
-                    <Select value={formData.schoolYear} onValueChange={handleSchoolYearChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {schoolYearOptions().map((year) => (
-                          <SelectItem key={year} value={year}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
+                <div className="space-y-3 border-t border-border pt-3">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    Types de Paiement<span className="text-destructive">*</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-56">
+                        Ajoutez plusieurs lignes pour les regrouper sur un même reçu. Un même
+                        type peut revenir plusieurs fois avec des mois différents (ex : Écolage
+                        Mai et Écolage Juin)
+                      </TooltipContent>
+                    </Tooltip>
+                  </label>
+
+                  {formData.items.map((item, index) => (
+                    <div key={index} className="space-y-2 rounded-md border border-border p-3">
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={item.paymentTypeId}
+                          onValueChange={(value) => handleItemTypeChange(index, value)}
+                          required
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Sélectionner un type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {paymentTypes.map((type) => {
+                              const amount = formData.classId
+                                ? resolveAmount(
+                                    formData.classId,
+                                    type.id,
+                                    schoolYearStart(formData.schoolYear)
+                                  )
+                                : type.amount;
+                              return (
+                                <SelectItem key={type.id} value={type.id}>
+                                  {type.name} - {formatAriary(amount)}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={item.month}
+                          onChange={(e) => handleItemMonthChange(index, e.target.value)}
+                          placeholder="Mois (ex: Mai)"
+                          className="w-36"
+                          required
+                        />
+                        {formData.items.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeItem(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Montant Dû</label>
+                          <Input
+                            type="number"
+                            value={item.amountDue}
+                            onChange={(e) =>
+                              handleItemAmountChange(index, "amountDue", Number(e.target.value))
+                            }
+                            min="0"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Montant Payé</label>
+                          <Input
+                            type="number"
+                            value={item.amountPaid}
+                            onChange={(e) =>
+                              handleItemAmountChange(index, "amountPaid", Number(e.target.value))
+                            }
+                            min="0"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter une ligne
+                  </Button>
+
+                  <p className="text-sm font-medium text-right">
+                    Total payé : {formatAriary(totalPaidInForm)}
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-1.5">
-                      Montant Dû (Ariary)
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-56">
-                          Rempli automatiquement selon la classe et le type de paiement
-                          choisis, modifiable si nécessaire
-                        </TooltipContent>
-                      </Tooltip>
-                    </label>
-                    <Input
-                      type="number"
-                      value={formData.amountDue}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          amountDue: Number(e.target.value),
-                        }))
-                      }
-                      min="0"
-                      required
-                    />
-                    {formData.classId && formData.paymentTypeId && (
-                      <p className="text-xs text-muted-foreground">
-                        {rates.some(
-                          (r) =>
-                            r.classId === formData.classId &&
-                            r.paymentTypeId === formData.paymentTypeId &&
-                            r.year === schoolYearStart(formData.schoolYear)
-                        )
-                          ? "Tarif spécifique à cette classe/année scolaire"
-                          : "Montant par défaut du type de paiement"}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Montant Payé (Ariary)</label>
-                    <Input
-                      type="number"
-                      value={formData.amountPaid}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          amountPaid: Number(e.target.value),
-                        }))
-                      }
-                      min="0"
-                      required
-                    />
-                  </div>
-                </div>
+
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Date de Paiement</label>
+                  <label className="text-sm font-medium">
+                    Date de Paiement<span className="text-destructive">*</span>
+                  </label>
                   <Input
                     type="date"
                     value={formData.paymentDate}
@@ -549,7 +621,10 @@ export default function PaymentsPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <p className="text-xs text-muted-foreground mt-3">
+                <span className="text-destructive">*</span> Champs obligatoires
+              </p>
+              <DialogFooter className="mt-2">
                 <Button type="submit">Enregistrer</Button>
               </DialogFooter>
             </form>
@@ -558,7 +633,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Receipt preview */}
-      <Dialog open={!!receiptPayment} onOpenChange={(open) => !open && setReceiptPayment(null)}>
+      <Dialog open={!!receiptPayments} onOpenChange={(open) => !open && setReceiptPayments(null)}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -570,12 +645,12 @@ export default function PaymentsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {receiptPayment && (
+          {receiptPayments && (
             <div
               id="payment-receipt"
               className="mx-auto max-h-[65vh] w-full max-w-[280px] overflow-y-auto rounded-md border border-dashed border-foreground/30 bg-card p-4"
             >
-              <ReceiptCopy payment={receiptPayment} label="Exemplaire Client" />
+              <ReceiptCopy payments={receiptPayments} label="Exemplaire Client" />
 
               <div className="my-4 flex items-center gap-2 text-muted-foreground">
                 <div className="flex-1 border-t border-dashed border-foreground/40" />
@@ -583,12 +658,12 @@ export default function PaymentsPage() {
                 <div className="flex-1 border-t border-dashed border-foreground/40" />
               </div>
 
-              <ReceiptCopy payment={receiptPayment} label="Exemplaire École" />
+              <ReceiptCopy payments={receiptPayments} label="Exemplaire École" />
             </div>
           )}
 
           <DialogFooter className="gap-2 sm:justify-center">
-            <Button variant="outline" onClick={() => setReceiptPayment(null)}>
+            <Button variant="outline" onClick={() => setReceiptPayments(null)}>
               Fermer
             </Button>
             <Button onClick={handlePrintReceipt} className="gap-2">
@@ -684,6 +759,19 @@ export default function PaymentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-1.5">
+                    N° Reçu
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Les lignes partageant le même numéro appartiennent au même reçu
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TableHead>
                 <TableHead>Élève</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Période</TableHead>
@@ -698,6 +786,9 @@ export default function PaymentsPage() {
             <TableBody>
               {filteredPayments.map((payment) => (
                 <TableRow key={payment.id}>
+                  <TableCell className="text-muted-foreground">
+                    {payment.receiptNumber.padStart(6, "0")}
+                  </TableCell>
                   <TableCell className="font-medium">
                     {payment.studentName}
                     <div className="text-xs text-muted-foreground">
@@ -727,7 +818,7 @@ export default function PaymentsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setReceiptPayment(payment)}
+                              onClick={() => handleReprint(payment)}
                             >
                               <Printer className="h-4 w-4" />
                             </Button>
@@ -763,7 +854,7 @@ export default function PaymentsPage() {
               {filteredPayments.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="text-center text-muted-foreground py-8"
                   >
                     Aucun paiement trouvé

@@ -190,7 +190,9 @@ export default function PaymentTypeRatesPage() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Type de Paiement</label>
+                  <label className="text-sm font-medium">
+                    Type de Paiement<span className="text-destructive">*</span>
+                  </label>
                   <Select
                     value={formData.paymentTypeId}
                     onValueChange={(value) =>
@@ -211,7 +213,9 @@ export default function PaymentTypeRatesPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Classe</label>
+                  <label className="text-sm font-medium">
+                    Classe<span className="text-destructive">*</span>
+                  </label>
                   <Select
                     value={formData.classId}
                     onValueChange={(value) =>
@@ -248,7 +252,9 @@ export default function PaymentTypeRatesPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Montant (Ariary)</label>
+                    <label className="text-sm font-medium">
+                      Montant (Ariary)<span className="text-destructive">*</span>
+                    </label>
                     <Input
                       type="number"
                       value={formData.amount}
@@ -261,7 +267,10 @@ export default function PaymentTypeRatesPage() {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
+              <p className="text-xs text-muted-foreground mt-3">
+                <span className="text-destructive">*</span> Champs obligatoires
+              </p>
+              <DialogFooter className="mt-2">
                 <Button type="submit">
                   {editingRate ? "Modifier" : "Créer"}
                 </Button>
