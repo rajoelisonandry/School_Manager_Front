@@ -42,6 +42,7 @@ import {
 } from "./actions";
 import { getClasses } from "../classes/actions";
 import { getPaymentTypeRates } from "../payment-type-rates/actions";
+import { currentSchoolYear, schoolYearStart } from "@/lib/school-year";
 
 interface PaymentType {
   id: string;
@@ -62,7 +63,7 @@ interface RateOption {
   amount: number;
 }
 
-const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_YEAR = schoolYearStart(currentSchoolYear());
 
 const ALL_CLASSES = "all";
 

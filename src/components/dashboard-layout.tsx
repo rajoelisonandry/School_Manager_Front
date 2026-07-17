@@ -14,6 +14,7 @@ import {
   Wallet,
   Tag,
   UserCog,
+  CalendarCheck,
   LogOut,
   Menu,
   X,
@@ -64,6 +65,13 @@ const navigation = [
     href: "/dashboard/payment-type-rates",
     icon: Tag,
     description: "Définir un montant spécifique par classe et par année",
+  },
+  {
+    name: "Suivi des Paiements",
+    href: "/dashboard/payment-tracking",
+    icon: CalendarCheck,
+    adminOnly: true,
+    description: "Voir qui a payé l'écolage et les autres frais, mois par mois",
   },
   {
     name: "Utilisateurs",

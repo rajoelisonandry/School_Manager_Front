@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +34,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Pencil, Trash2, Search, X, Eye, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X, Eye, Info, UserX, FileDown } from "lucide-react";
 import { getStudents, createStudent, updateStudent, deleteStudent } from "./actions";
 import { getClasses } from "../classes/actions";
+import { exportStudentsPdf } from "@/lib/pdf/students-pdf";
 
 interface Student {
   id: string;
@@ -80,6 +82,8 @@ const emptyFormData: Partial<Student> = {
 };
 
 export default function StudentsPage() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -180,8 +184,15 @@ export default function StudentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet élève ?")) {
-      await deleteStudent(id);
+    if (isAdmin) {
+      if (confirm("Êtes-vous sûr de vouloir supprimer cet élève ?")) {
+        await deleteStudent(id);
+        loadData();
+      }
+      return;
+    }
+    if (confirm("Voulez-vous désactiver cet élève ? Seul un administrateur peut le supprimer définitivement.")) {
+      await updateStudent(id, { status: "inactive" });
       loadData();
     }
   };
@@ -194,6 +205,14 @@ export default function StudentsPage() {
   const getClassName = (classId: string) => {
     const cls = classes.find((c) => c.id === classId);
     return cls ? cls.name : "Non assigné";
+  };
+
+  const handleExportPdf = () => {
+    exportStudentsPdf(
+      filteredStudents,
+      classes,
+      classFilter === ALL_CLASSES ? null : classFilter
+    );
   };
 
   if (isLoading) {
@@ -556,6 +575,23 @@ export default function StudentsPage() {
                   className="pl-10 w-full sm:w-64"
                 />
               </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    onClick={handleExportPdf}
+                    disabled={filteredStudents.length === 0}
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Exporter PDF
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {classFilter === ALL_CLASSES
+                    ? "Exporter la liste, groupée par classe"
+                    : "Exporter la liste des élèves de cette classe"}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardHeader>
@@ -563,6 +599,7 @@ export default function StudentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Numéro</TableHead>
                 <TableHead>Matricule</TableHead>
                 <TableHead>Nom Complet</TableHead>
                 <TableHead>Classe</TableHead>
@@ -575,12 +612,13 @@ export default function StudentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStudents.map((student) => (
+              {filteredStudents.map((student, index) => (
                 <TableRow
                   key={student.id}
                   className="cursor-pointer"
                   onClick={() => handleView(student)}
                 >
+                  <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="font-medium">{student.matricule}</TableCell>
                   <TableCell className="font-medium">
                     {student.firstName} {student.lastName}
@@ -653,10 +691,18 @@ export default function StudentsPage() {
                             size="icon"
                             onClick={() => handleDelete(student.id)}
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            {isAdmin ? (
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            ) : (
+                              <UserX className="h-4 w-4 text-amber-600" />
+                            )}
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Supprimer cet élève</TooltipContent>
+                        <TooltipContent>
+                          {isAdmin
+                            ? "Supprimer cet élève"
+                            : "Désactiver cet élève (seul un administrateur peut le supprimer)"}
+                        </TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>
@@ -665,7 +711,7 @@ export default function StudentsPage() {
               {filteredStudents.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="text-center text-muted-foreground py-8"
                   >
                     Aucun élève trouvé

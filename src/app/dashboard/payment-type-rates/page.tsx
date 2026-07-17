@@ -42,6 +42,7 @@ import {
 } from "./actions";
 import { getPaymentTypes } from "../payment-types/actions";
 import { getClasses } from "../classes/actions";
+import { currentSchoolYear, schoolYearOptions, schoolYearStart } from "@/lib/school-year";
 
 interface PaymentTypeRate {
   id: string;
@@ -66,7 +67,8 @@ interface ClassOption {
 const emptyFormData = {
   paymentTypeId: "",
   classId: "",
-  year: new Date().getFullYear(),
+  schoolYear: currentSchoolYear(),
+  year: schoolYearStart(currentSchoolYear()),
   amount: 0,
 };
 
@@ -103,10 +105,13 @@ export default function PaymentTypeRatesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const { schoolYear, ...payload } = formData;
+    void schoolYear;
+
     if (editingRate) {
-      await updatePaymentTypeRate(editingRate.id, formData);
+      await updatePaymentTypeRate(editingRate.id, payload);
     } else {
-      await createPaymentTypeRate(formData);
+      await createPaymentTypeRate(payload);
     }
 
     resetForm();
@@ -114,11 +119,16 @@ export default function PaymentTypeRatesPage() {
     loadData();
   };
 
+  const handleSchoolYearChange = (schoolYear: string) => {
+    setFormData((prev) => ({ ...prev, schoolYear, year: schoolYearStart(schoolYear) }));
+  };
+
   const handleEdit = (rate: PaymentTypeRate) => {
     setEditingRate(rate);
     setFormData({
       paymentTypeId: rate.paymentTypeId,
       classId: rate.classId,
+      schoolYear: `${rate.year}-${rate.year + 1}`,
       year: rate.year,
       amount: rate.amount,
     });
@@ -223,15 +233,19 @@ export default function PaymentTypeRatesPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Année</label>
-                    <Input
-                      type="number"
-                      value={formData.year}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, year: Number(e.target.value) }))
-                      }
-                      required
-                    />
+                    <label className="text-sm font-medium">Année scolaire</label>
+                    <Select value={formData.schoolYear} onValueChange={handleSchoolYearChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {schoolYearOptions().map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Montant (Ariary)</label>
@@ -267,7 +281,7 @@ export default function PaymentTypeRatesPage() {
               <TableRow>
                 <TableHead>Type</TableHead>
                 <TableHead>Classe</TableHead>
-                <TableHead>Année</TableHead>
+                <TableHead>Année scolaire</TableHead>
                 <TableHead>Montant</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -282,7 +296,7 @@ export default function PaymentTypeRatesPage() {
                     </div>
                   </TableCell>
                   <TableCell>{rate.className}</TableCell>
-                  <TableCell>{rate.year}</TableCell>
+                  <TableCell>{rate.year}-{rate.year + 1}</TableCell>
                   <TableCell>{formatAriary(rate.amount)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

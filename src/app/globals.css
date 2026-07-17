@@ -128,3 +128,20 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  body.print-receipt * {
+    visibility: hidden;
+  }
+  body.print-receipt #payment-receipt,
+  body.print-receipt #payment-receipt * {
+    visibility: visible;
+  }
+  body.print-receipt #payment-receipt {
+    position: fixed;
+    inset: 0;
+    margin: 0 auto;
+    max-height: none;
+    overflow: visible;
+  }
+}

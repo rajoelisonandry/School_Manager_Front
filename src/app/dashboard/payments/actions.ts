@@ -15,6 +15,10 @@ interface BackendPayment {
     id: number
     name: string
   }
+  recordedBy: {
+    id: number
+    name: string
+  } | null
   month: string
   year: number
   amountPaid: number
@@ -25,6 +29,7 @@ interface BackendPayment {
 export interface PaymentInput {
   studentId: string
   paymentTypeId: string
+  recordedByUserId?: string
   month: string
   year: number
   amountPaid: number
@@ -40,6 +45,7 @@ function toFrontPayment(payment: BackendPayment) {
     studentMatricule: payment.student.matricule,
     paymentTypeId: String(payment.paymentType.id),
     paymentTypeName: payment.paymentType.name,
+    recordedByName: payment.recordedBy?.name ?? null,
     month: payment.month,
     year: payment.year,
     amountPaid: payment.amountPaid,
@@ -49,11 +55,12 @@ function toFrontPayment(payment: BackendPayment) {
 }
 
 function toBackendPayload(data: Partial<PaymentInput>) {
-  const { studentId, paymentTypeId, ...rest } = data
+  const { studentId, paymentTypeId, recordedByUserId, ...rest } = data
   return {
     ...rest,
     ...(studentId !== undefined ? { studentId: Number(studentId) } : {}),
     ...(paymentTypeId !== undefined ? { paymentTypeId: Number(paymentTypeId) } : {}),
+    ...(recordedByUserId !== undefined ? { recordedByUserId: Number(recordedByUserId) } : {}),
   }
 }
 
@@ -65,11 +72,12 @@ export async function getPayments() {
 }
 
 export async function createPayment(data: PaymentInput) {
-  await backendFetch('/payments', {
+  const payment = await backendFetch<BackendPayment>('/payments', {
     method: 'POST',
     body: JSON.stringify(toBackendPayload(data)),
   })
   revalidatePath('/dashboard/payments')
+  return toFrontPayment(payment)
 }
 
 export async function deletePayment(id: string) {
