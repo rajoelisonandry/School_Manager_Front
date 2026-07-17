@@ -28,7 +28,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Plus, Pencil, Trash2, Users, Info } from "lucide-react";
 import { getClasses, createClass, updateClass, deleteClass } from './actions'
 
 interface Class {
@@ -136,9 +141,9 @@ export default function ClassesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Classes</h1>
+          <h1 className="text-3xl font-bold text-foreground">Gestion des Classes</h1>
           <p className="text-muted-foreground mt-2">
             Gérer les classes du 13 ème à la Terminale
           </p>
@@ -223,7 +228,19 @@ export default function ClassesPage() {
                   <TableHead>Nom</TableHead>
                   <TableHead>Capacité</TableHead>
                   <TableHead>Élèves Inscrits</TableHead>
-                  <TableHead>Taux d'Occupation</TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1.5">
+                      Taux d&apos;Occupation
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Proportion de places occupées par rapport à la capacité de la classe
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -243,7 +260,7 @@ export default function ClassesPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full ${
                                 occupancyRate > 90
@@ -260,20 +277,30 @@ export default function ClassesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(cls)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(cls.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(cls)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Modifier cette classe</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(cls.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Supprimer cette classe</TooltipContent>
+                          </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>

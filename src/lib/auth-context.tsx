@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { loginUser } from "@/app/dashboard/users/actions";
 
 interface User {
   id: string;
@@ -12,7 +13,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -31,18 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    if (username === "admin" && password === "admin123") {
-      const userData: User = {
-        id: "1",
-        username: "admin",
-        role: "admin",
-        name: "Administrateur",
-        email: "admin@ecole.com",
-      };
-      setUser(userData);
+  const login = async (username: string, password: string): Promise<boolean> => {
+    const loggedInUser = await loginUser(username, password);
+    if (loggedInUser) {
+      setUser(loggedInUser);
       setIsAuthenticated(true);
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
       return true;
     }
     return false;

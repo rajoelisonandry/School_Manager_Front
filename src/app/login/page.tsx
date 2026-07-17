@@ -9,23 +9,27 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
-    if (login(username, password)) {
+    const success = await login(username, password);
+    if (success) {
       router.push("/dashboard");
     } else {
       setError("Identifiants incorrects");
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50 dark:from-background dark:to-background">
+      <div className="bg-card p-8 rounded-lg shadow-lg w-full max-w-md border border-border">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">Au Bel Enfant</h1>
           <p className="text-muted-foreground">Système de Gestion d'École</p>
@@ -64,8 +68,8 @@ export default function LoginPage() {
             <div className="text-destructive text-sm text-center">{error}</div>
           )}
 
-          <Button type="submit" className="w-full">
-            Se connecter
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Connexion..." : "Se connecter"}
           </Button>
         </form>
 

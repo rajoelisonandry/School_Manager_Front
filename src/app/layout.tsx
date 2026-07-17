@@ -2,6 +2,20 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { ThemeProvider } from "@/lib/theme-context";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+const themeInitScript = `
+  (function () {
+    try {
+      var stored = localStorage.getItem('theme');
+      var theme = stored === 'light' || stored === 'dark'
+        ? stored
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      if (theme === 'dark') document.documentElement.classList.add('dark');
+    } catch (e) {}
+  })();
+`;
 
 const googleSans = localFont({
   src: "../fonts/Google_Sans/GoogleSans-VariableFont_GRAD,opsz,wght.ttf",
@@ -30,9 +44,17 @@ export default function RootLayout({
     <html
       lang="fr"
       className={`${googleSans.variable} ${googleSansItalic.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans">
-        <AuthProvider>{children}</AuthProvider>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
+        <ThemeProvider>
+          <AuthProvider>
+            <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
