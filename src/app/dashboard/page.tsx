@@ -8,11 +8,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Users, GraduationCap, Wallet, TrendingUp, Info, BarChart3 } from "lucide-react";
+import { Users, GraduationCap, Wallet, TrendingUp, Info, BarChart3, LayoutDashboard } from "lucide-react";
 import { getStudents } from "./students/actions";
 import { getClasses } from "./classes/actions";
 import { getPayments } from "./payments/actions";
 import { CollectedPaymentsChart } from "@/components/collected-payments-chart";
+import { PageHeader } from "@/components/page-header";
 
 function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
@@ -72,12 +73,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Tableau de bord</h1>
-        <p className="text-muted-foreground mt-2">
-          Vue d'ensemble de l'établissement scolaire
-        </p>
-      </div>
+      <PageHeader
+        icon={LayoutDashboard}
+        title="Tableau de bord"
+        subtitle="Vue d'ensemble de l'établissement scolaire"
+      />
 
       {/* Statistics Cards */}
       <div className={`grid gap-6 md:grid-cols-2 ${canSeeStats ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>

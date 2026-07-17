@@ -34,7 +34,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X } from "lucide-react";
+import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X, DollarSign } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { getPayments, createPaymentBatch, deletePayment } from "./actions";
 import { getStudents } from "../students/actions";
 import { getPaymentTypes } from "../payment-types/actions";
@@ -404,12 +405,11 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Paiements des Élèves</h1>
-          <p className="text-muted-foreground mt-2">
-            Écolage, frais généraux, excursions et autres paiements (en Ariary)
-          </p>
-        </div>
+        <PageHeader
+          icon={DollarSign}
+          title="Paiements des Élèves"
+          subtitle="Écolage, frais généraux, excursions et autres paiements (en Ariary)"
+        />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>

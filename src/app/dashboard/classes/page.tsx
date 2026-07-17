@@ -33,8 +33,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Pencil, Trash2, Users, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Info, GraduationCap } from "lucide-react";
 import { getClasses, createClass, updateClass, deleteClass } from './actions'
+import { PageHeader } from "@/components/page-header";
 
 interface Class {
   id: string;
@@ -142,12 +143,11 @@ export default function ClassesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Gestion des Classes</h1>
-          <p className="text-muted-foreground mt-2">
-            Gérer les classes du 13 ème à la Terminale
-          </p>
-        </div>
+        <PageHeader
+          icon={GraduationCap}
+          title="Gestion des Classes"
+          subtitle="Gérer les classes du 13 ème à la Terminale"
+        />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>

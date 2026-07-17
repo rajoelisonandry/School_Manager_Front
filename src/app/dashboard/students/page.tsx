@@ -34,12 +34,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Pencil, Trash2, Search, X, Eye, Info, UserX, FileDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X, Eye, Info, UserX, FileDown, Users } from "lucide-react";
 import { getStudents, createStudent, updateStudent, deleteStudent, uploadStudentDocument } from "./actions";
 import { getClasses } from "../classes/actions";
 import { exportStudentsPdf } from "@/lib/pdf/students-pdf";
 import { DocumentUploadField } from "@/components/document-upload-field";
 import { backendFileUrl } from "@/lib/backend/public-url";
+import { PageHeader } from "@/components/page-header";
 
 interface Student {
   id: string;
@@ -236,12 +237,11 @@ export default function StudentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Gestion des Élèves</h1>
-          <p className="text-muted-foreground mt-2">
-            Gérer les informations des élèves
-          </p>
-        </div>
+        <PageHeader
+          icon={Users}
+          title="Gestion des Élèves"
+          subtitle="Gérer les informations des élèves"
+        />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>

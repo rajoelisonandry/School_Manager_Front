@@ -43,6 +43,7 @@ import {
 import { getPaymentTypes } from "../payment-types/actions";
 import { getClasses } from "../classes/actions";
 import { currentSchoolYear, schoolYearOptions, schoolYearStart } from "@/lib/school-year";
+import { PageHeader } from "@/components/page-header";
 
 interface PaymentTypeRate {
   id: string;
@@ -154,9 +155,11 @@ export default function PaymentTypeRatesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            Tarifs par Classe
+        <PageHeader
+          icon={Tag}
+          title="Tarifs par Classe"
+          subtitle="Montant de chaque type de paiement (Écolage, etc.) par classe et par année"
+          titleAdornment={
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -166,11 +169,8 @@ export default function PaymentTypeRatesPage() {
                 pour une classe et une année précises
               </TooltipContent>
             </Tooltip>
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Montant de chaque type de paiement (Écolage, etc.) par classe et par année
-          </p>
-        </div>
+          }
+        />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>

@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CalendarCheck, Shield, Info } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { getStudents } from "../students/actions";
 import { getClasses } from "../classes/actions";
 import { getPaymentTypes } from "../payment-types/actions";
@@ -187,12 +188,11 @@ export default function PaymentTrackingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Suivi des Paiements</h1>
-        <p className="text-muted-foreground mt-2">
-          Suivi par classe de l&apos;écolage mensuel et des autres frais scolaires
-        </p>
-      </div>
+      <PageHeader
+        icon={CalendarCheck}
+        title="Suivi des Paiements"
+        subtitle="Suivi par classe de l'écolage mensuel et des autres frais scolaires"
+      />
 
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={classId} onValueChange={setClassId}>

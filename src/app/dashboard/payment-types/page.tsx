@@ -43,6 +43,7 @@ import {
 import { getClasses } from "../classes/actions";
 import { getPaymentTypeRates } from "../payment-type-rates/actions";
 import { currentSchoolYear, schoolYearStart } from "@/lib/school-year";
+import { PageHeader } from "@/components/page-header";
 
 interface PaymentType {
   id: string;
@@ -181,12 +182,11 @@ export default function PaymentTypesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Types de Paiement</h1>
-          <p className="text-muted-foreground mt-2">
-            Écolage, frais généraux, excursions, et autres frais scolaires
-          </p>
-        </div>
+        <PageHeader
+          icon={Wallet}
+          title="Types de Paiement"
+          subtitle="Écolage, frais généraux, excursions, et autres frais scolaires"
+        />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>

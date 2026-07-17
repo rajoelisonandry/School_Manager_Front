@@ -29,56 +29,76 @@ import {
 } from "@/components/ui/tooltip";
 import { useState } from "react";
 
-const navigation = [
+const navigationGroups = [
   {
-    name: "Tableau de bord",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    description: "Vue d'ensemble des statistiques de l'établissement",
+    label: "Vue d'ensemble",
+    items: [
+      {
+        name: "Tableau de bord",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+        description: "Vue d'ensemble des statistiques de l'établissement",
+      },
+    ],
   },
   {
-    name: "Élèves",
-    href: "/dashboard/students",
-    icon: Users,
-    description: "Enregistrer et consulter les fiches des élèves",
+    label: "Établissement",
+    items: [
+      {
+        name: "Élèves",
+        href: "/dashboard/students",
+        icon: Users,
+        description: "Enregistrer et consulter les fiches des élèves",
+      },
+      {
+        name: "Classes",
+        href: "/dashboard/classes",
+        icon: GraduationCap,
+        description: "Gérer les classes et leurs effectifs",
+      },
+    ],
   },
   {
-    name: "Classes",
-    href: "/dashboard/classes",
-    icon: GraduationCap,
-    description: "Gérer les classes et leurs effectifs",
+    label: "Paiements",
+    items: [
+      {
+        name: "Paiements",
+        href: "/dashboard/payments",
+        icon: DollarSign,
+        description: "Enregistrer et consulter les paiements des élèves",
+      },
+      {
+        name: "Types de Paiement",
+        href: "/dashboard/payment-types",
+        icon: Wallet,
+        description: "Définir les catégories de frais (Écolage, Excursion, ...)",
+      },
+      {
+        name: "Tarifs par Classe",
+        href: "/dashboard/payment-type-rates",
+        icon: Tag,
+        description: "Définir un montant spécifique par classe et par année",
+      },
+      {
+        name: "Suivi des Paiements",
+        href: "/dashboard/payment-tracking",
+        icon: CalendarCheck,
+        adminOnly: true,
+        description: "Voir qui a payé l'écolage et les autres frais, mois par mois",
+      },
+    ],
   },
   {
-    name: "Paiements",
-    href: "/dashboard/payments",
-    icon: DollarSign,
-    description: "Enregistrer et consulter les paiements des élèves",
-  },
-  {
-    name: "Types de Paiement",
-    href: "/dashboard/payment-types",
-    icon: Wallet,
-    description: "Définir les catégories de frais (Écolage, Excursion, ...)",
-  },
-  {
-    name: "Tarifs par Classe",
-    href: "/dashboard/payment-type-rates",
-    icon: Tag,
-    description: "Définir un montant spécifique par classe et par année",
-  },
-  {
-    name: "Suivi des Paiements",
-    href: "/dashboard/payment-tracking",
-    icon: CalendarCheck,
-    adminOnly: true,
-    description: "Voir qui a payé l'écolage et les autres frais, mois par mois",
-  },
-  {
-    name: "Utilisateurs",
-    href: "/dashboard/users",
-    icon: UserCog,
-    adminOnly: true,
-    description: "Gérer les comptes administrateurs et contributeurs",
+    label: "Administration",
+    items: [
+      {
+        name: "Utilisateurs",
+        href: "/dashboard/users",
+        icon: UserCog,
+        adminOnly: true,
+        description: "Gérer les comptes administrateurs et contributeurs",
+      },
+    ],
   },
 ];
 
@@ -126,12 +146,19 @@ export default function DashboardLayout({
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-border flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-primary">Au Bel Enfant</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Système de Gestion
-              </p>
+          <div className="p-5 border-b border-border flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <GraduationCap className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Lycée Privé
+                </p>
+                <h1 className="truncate text-lg font-bold leading-tight text-foreground">
+                  Au Bel Enfant
+                </h1>
+              </div>
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -140,6 +167,7 @@ export default function DashboardLayout({
                   size="icon"
                   onClick={toggleTheme}
                   aria-label="Changer de thème"
+                  className="shrink-0"
                 >
                   {theme === "dark" ? (
                     <Sun className="h-5 w-5" />
@@ -155,30 +183,51 @@ export default function DashboardLayout({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {navigation
-              .filter((item) => !item.adminOnly || user?.role === "admin")
-              .map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
+          <nav className="flex-1 overflow-y-auto p-3 space-y-5">
+            {navigationGroups.map((group) => {
+              const items = group.items.filter(
+                (item) => !item.adminOnly || user?.role === "admin"
+              );
+              if (items.length === 0) return null;
               return (
-                <Tooltip key={item.name}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span className="font-medium">{item.name}</span>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{item.description}</TooltipContent>
-                </Tooltip>
+                <div key={group.label}>
+                  <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {group.label}
+                  </p>
+                  <div className="space-y-1">
+                    {items.map((item) => {
+                      const isActive = pathname === item.href;
+                      const Icon = item.icon;
+                      return (
+                        <Tooltip key={item.name}>
+                          <TooltipTrigger asChild>
+                            <Link
+                              href={item.href}
+                              onClick={() => setSidebarOpen(false)}
+                              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                                isActive
+                                  ? "bg-primary text-primary-foreground shadow-sm"
+                                  : "text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              <span
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                  isActive
+                                    ? "bg-white/15"
+                                    : "bg-muted text-muted-foreground group-hover:bg-background"
+                                }`}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </span>
+                              <span className="text-sm font-medium">{item.name}</span>
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">{item.description}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </nav>
@@ -219,9 +268,14 @@ export default function DashboardLayout({
             >
               <Menu className="h-6 w-6" />
             </Button>
-            <h1 className="text-lg font-semibold text-primary">
-              Au Bel Enfant
-            </h1>
+            <div className="text-center">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Lycée Privé
+              </p>
+              <h1 className="text-base font-bold leading-tight text-foreground">
+                Au Bel Enfant
+              </h1>
+            </div>
             <div className="flex items-center">
               <Button variant="ghost" size="icon" onClick={toggleTheme}>
                 {theme === "dark" ? (

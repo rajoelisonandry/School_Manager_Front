@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Plus, Pencil, Trash2, Search, Shield, UserCog, Info } from "lucide-react";
 import { getUsers, createUser, updateUser, deleteUser } from "./actions";
+import { PageHeader } from "@/components/page-header";
 
 interface User {
   id: string;
@@ -171,14 +172,11 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Gestion des Utilisateurs
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Gérer les accès au syst ème
-          </p>
-        </div>
+        <PageHeader
+          icon={UserCog}
+          title="Gestion des Utilisateurs"
+          subtitle="Gérer les accès au système"
+        />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>
