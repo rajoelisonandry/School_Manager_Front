@@ -37,10 +37,12 @@ import {
 import { Plus, Pencil, Trash2, Search, X, Eye, Info, UserX, FileDown, Users } from "lucide-react";
 import { getStudents, createStudent, updateStudent, deleteStudent, uploadStudentDocument } from "./actions";
 import { getClasses } from "../classes/actions";
+import { getPayments } from "../payments/actions";
 import { exportStudentsPdf } from "@/lib/pdf/students-pdf";
 import { DocumentUploadField } from "@/components/document-upload-field";
 import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
+import { schoolYearOptions, schoolYearStart } from "@/lib/school-year";
 
 interface Student {
   id: string;
@@ -71,6 +73,7 @@ interface ClassOption {
 }
 
 const ALL_CLASSES = "all";
+const ALL_YEARS = "all";
 
 const emptyFormData: Partial<Student> = {
   matricule: "",
@@ -99,8 +102,10 @@ export default function StudentsPage() {
   const isAdmin = currentUser?.role === "admin";
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPayments>>>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [classFilter, setClassFilter] = useState(ALL_CLASSES);
+  const [schoolYearFilter, setSchoolYearFilter] = useState(ALL_YEARS);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState<Partial<Student>>(emptyFormData);
@@ -114,12 +119,14 @@ export default function StudentsPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [studentsData, classesData] = await Promise.all([
+    const [studentsData, classesData, paymentsData] = await Promise.all([
       getStudents(),
       getClasses(),
+      getPayments(),
     ]);
     setStudents(studentsData);
     setClasses(classesData);
+    setPayments(paymentsData);
     setIsLoading(false);
   };
 
@@ -131,7 +138,14 @@ export default function StudentsPage() {
       student.matricule.toLowerCase().includes(term);
     const matchesClass =
       classFilter === ALL_CLASSES || student.classId === classFilter;
-    return matchesSearch && matchesClass;
+    const matchesYear =
+      schoolYearFilter === ALL_YEARS ||
+      payments.some((p) => {
+        if (p.studentId !== student.id) return false;
+        const start = schoolYearStart(schoolYearFilter);
+        return p.year === start || p.year === start + 1;
+      });
+    return matchesSearch && matchesClass && matchesYear;
   });
 
   const handleInputChange = (
@@ -702,6 +716,29 @@ export default function StudentsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
+                      <SelectTrigger className="w-full sm:w-44">
+                        <SelectValue placeholder="Année scolaire" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_YEARS}>Toutes les années</SelectItem>
+                        {schoolYearOptions().map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-56">
+                  Filtre les élèves ayant au moins un paiement enregistré pour l&apos;année
+                  scolaire sélectionnée
+                </TooltipContent>
+              </Tooltip>
               <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

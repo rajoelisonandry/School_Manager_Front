@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -23,7 +22,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CalendarCheck, Shield, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CalendarCheck, Info, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { getStudents } from "../students/actions";
 import { getClasses } from "../classes/actions";
@@ -35,6 +35,7 @@ import {
   currentSchoolYear,
   schoolYearOptions,
 } from "@/lib/school-year";
+import { exportPaymentTrackingPdf } from "@/lib/pdf/payment-tracking-pdf";
 
 interface Student {
   id: string;
@@ -80,9 +81,6 @@ function formatShortDate(date: string) {
 }
 
 export default function PaymentTrackingPage() {
-  const { user: currentUser } = useAuth();
-  const isAdmin = currentUser?.role === "admin";
-
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>([]);
@@ -92,7 +90,6 @@ export default function PaymentTrackingPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAdmin) return;
     const loadData = async () => {
       setIsLoading(true);
       const [studentsData, classesData, typesData, paymentsData] = await Promise.all([
@@ -109,7 +106,7 @@ export default function PaymentTrackingPage() {
       setIsLoading(false);
     };
     loadData();
-  }, [isAdmin]);
+  }, []);
 
   const [startYear, endYear] = useMemo(
     () => schoolYear.split("-").map(Number) as [number, number],
@@ -122,13 +119,8 @@ export default function PaymentTrackingPage() {
   );
 
   const otherTypes = useMemo(
-    () =>
-      paymentTypes.filter(
-        (t) =>
-          t.id !== ecolageType?.id &&
-          (t.classId === null || t.classId === classId)
-      ),
-    [paymentTypes, ecolageType, classId]
+    () => paymentTypes.filter((t) => t.id !== ecolageType?.id),
+    [paymentTypes, ecolageType]
   );
 
   const classStudents = useMemo(
@@ -170,17 +162,10 @@ export default function PaymentTrackingPage() {
     );
   };
 
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <Shield className="h-10 w-10 text-muted-foreground mb-3" />
-        <p className="text-lg font-medium">Accès réservé aux administrateurs</p>
-        <p className="text-sm text-muted-foreground">
-          Vous n&apos;avez pas les droits nécessaires pour voir cette page.
-        </p>
-      </div>
-    );
-  }
+  const handleExportPdf = () => {
+    const className = classes.find((c) => c.id === classId)?.name ?? "Classe";
+    exportPaymentTrackingPdf(className, schoolYear, classStudents, otherTypes, ecolageType, payments);
+  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Chargement...</div>;
@@ -221,7 +206,21 @@ export default function PaymentTrackingPage() {
           </SelectContent>
         </Select>
 
-        <div className="flex items-center gap-4 text-xs text-muted-foreground ml-auto">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              onClick={handleExportPdf}
+              disabled={classStudents.length === 0}
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Exporter PDF
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Exporter le suivi de cette classe en PDF</TooltipContent>
+        </Tooltip>
+
+        <div className="flex items-center gap-4 text-xs text-muted-foreground w-full sm:w-auto sm:ml-auto">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
             Payé (date)

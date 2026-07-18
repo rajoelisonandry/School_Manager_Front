@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { PRIMARY, getFinalY, drawPdfHeader, slugify } from "./shared";
 
 interface StudentForExport {
   matricule: string;
@@ -15,55 +16,12 @@ interface ClassOption {
   name: string;
 }
 
-const PRIMARY: [number, number, number] = [21, 60, 94];
-
 function genderLabel(gender: string) {
   return gender === "M" ? "Masculin" : "Féminin";
 }
 
 function formatDate(date: string) {
   return date ? new Date(date).toLocaleDateString("fr-FR") : "-";
-}
-
-function currentSchoolYear() {
-  const now = new Date();
-  const year = now.getFullYear();
-  // L'année scolaire commence en septembre
-  return now.getMonth() >= 8 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-}
-
-function getFinalY(doc: jsPDF): number {
-  return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
-}
-
-function drawHeader(doc: jsPDF, subtitle: string): number {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  doc.setTextColor(...PRIMARY);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Au Bel Enfant", 14, 18);
-
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(10);
-  doc.text("Ambition - Motivation - Réussite", 14, 25);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text(subtitle, pageWidth - 14, 18, { align: "right" });
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(`Année scolaire : ${currentSchoolYear()}`, pageWidth - 14, 25, {
-    align: "right",
-  });
-
-  doc.setDrawColor(...PRIMARY);
-  doc.setLineWidth(0.4);
-  doc.line(14, 31, pageWidth - 14, 31);
-
-  doc.setTextColor(0, 0, 0);
-  return 42;
 }
 
 function drawClassTable(
@@ -116,16 +74,6 @@ function drawClassTable(
   return getFinalY(doc) + 12;
 }
 
-const DIACRITICS_REGEX = new RegExp("[̀-ͯ]", "g");
-
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(DIACRITICS_REGEX, "")
-    .replace(/\s+/g, "-");
-}
-
 export function exportStudentsPdf(
   students: StudentForExport[],
   classes: ClassOption[],
@@ -135,13 +83,13 @@ export function exportStudentsPdf(
 
   if (selectedClassId) {
     const className = classes.find((c) => c.id === selectedClassId)?.name ?? "Classe";
-    const y = drawHeader(doc, `Liste des Élèves — ${className}`);
+    const y = drawPdfHeader(doc, `Liste des Élèves — ${className}`);
     drawClassTable(doc, className, students, y);
     doc.save(`eleves-${slugify(className)}.pdf`);
     return;
   }
 
-  let y = drawHeader(doc, "Liste des Élèves — Toutes les classes");
+  let y = drawPdfHeader(doc, "Liste des Élèves — Toutes les classes");
 
   const byClass = new Map<string, StudentForExport[]>();
   for (const student of students) {

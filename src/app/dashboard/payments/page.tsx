@@ -34,9 +34,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X, DollarSign } from "lucide-react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { getPayments, createPaymentBatch, deletePayment } from "./actions";
+import { getPayments, getPaymentsPaginated, createPaymentBatch, deletePayment } from "./actions";
 import { getStudents } from "../students/actions";
 import { getPaymentTypes } from "../payment-types/actions";
 import { getClasses } from "../classes/actions";
@@ -189,6 +190,8 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
   );
 }
 
+const HISTORY_LIMIT = 10;
+
 export default function PaymentsPage() {
   const { user: currentUser } = useAuth();
   const canSeeStats = currentUser?.role === "admin";
@@ -203,9 +206,39 @@ export default function PaymentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [receiptPayments, setReceiptPayments] = useState<Payment[] | null>(null);
 
+  const [historyItems, setHistoryItems] = useState<Payment[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    loadHistory(historyPage, debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyPage, debouncedSearch]);
+
+  const loadHistory = async (page: number, search: string) => {
+    setIsHistoryLoading(true);
+    const result = await getPaymentsPaginated(page, HISTORY_LIMIT, search || undefined);
+    setHistoryItems(result.items);
+    setHistoryTotal(result.total);
+    setHistoryTotalPages(result.totalPages);
+    setIsHistoryLoading(false);
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -236,12 +269,6 @@ export default function PaymentsPage() {
     const type = paymentTypes.find((t) => t.id === paymentTypeId);
     return type?.amount ?? 0;
   };
-
-  const filteredPayments = payments.filter(
-    (p) =>
-      p.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.studentMatricule.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const studentsForForm = formData.classId
     ? students.filter((s) => s.classId === formData.classId)
@@ -339,6 +366,8 @@ export default function PaymentsPage() {
     resetForm();
     setIsDialogOpen(false);
     loadData();
+    setHistoryPage(1);
+    loadHistory(1, debouncedSearch);
     setReceiptPayments(created);
   };
 
@@ -362,6 +391,9 @@ export default function PaymentsPage() {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce paiement ?")) {
       await deletePayment(id);
       loadData();
+      const nextPage = historyItems.length === 1 && historyPage > 1 ? historyPage - 1 : historyPage;
+      setHistoryPage(nextPage);
+      loadHistory(nextPage, debouncedSearch);
     }
   };
 
@@ -456,29 +488,20 @@ export default function PaymentsPage() {
                   <label className="text-sm font-medium">
                     Élève<span className="text-destructive">*</span>
                   </label>
-                  <Select
+                  <SearchableSelect
                     value={formData.studentId}
                     onValueChange={(value) =>
                       setFormData((prev) => ({ ...prev, studentId: value }))
                     }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un élève" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {studentsForForm.map((student) => (
-                        <SelectItem key={student.id} value={student.id}>
-                          {student.matricule} - {student.firstName} {student.lastName}
-                        </SelectItem>
-                      ))}
-                      {studentsForForm.length === 0 && (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                          Aucun élève dans cette classe
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Sélectionner un élève"
+                    searchPlaceholder="Matricule, nom ou prénom..."
+                    emptyMessage="Aucun élève dans cette classe"
+                    options={studentsForForm.map((student) => ({
+                      value: student.id,
+                      label: `${student.matricule} - ${student.firstName} ${student.lastName}`,
+                      keywords: `${student.matricule} ${student.firstName} ${student.lastName}`,
+                    }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-1.5">
@@ -743,7 +766,17 @@ export default function PaymentsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle>Historique des Paiements ({filteredPayments.length})</CardTitle>
+            <CardTitle className="flex items-center gap-1.5">
+              Historique des Paiements ({historyTotal})
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Affiche 10 paiements à la fois, triés du plus récent au plus ancien
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -784,7 +817,7 @@ export default function PaymentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((payment) => (
+              {historyItems.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="text-muted-foreground">
                     {payment.receiptNumber.padStart(6, "0")}
@@ -851,7 +884,7 @@ export default function PaymentsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredPayments.length === 0 && (
+              {!isHistoryLoading && historyItems.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={10}
@@ -863,6 +896,34 @@ export default function PaymentsPage() {
               )}
             </TableBody>
           </Table>
+
+          {historyTotalPages > 1 && (
+            <div className="flex items-center justify-between flex-wrap gap-3 mt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {historyPage} sur {historyTotalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                  disabled={historyPage <= 1 || isHistoryLoading}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHistoryPage((p) => Math.min(historyTotalPages, p + 1))}
+                  disabled={historyPage >= historyTotalPages || isHistoryLoading}
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

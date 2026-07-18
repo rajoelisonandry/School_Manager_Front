@@ -19,10 +19,13 @@ export function normalizeText(text: string) {
     .replace(/[̀-ͯ]/g, "");
 }
 
+// À partir de juillet, l'année scolaire par défaut bascule déjà sur la suivante
+// (ex: le 01/07/2026, l'année par défaut devient "2026-2027") pour anticiper la
+// préparation de la rentrée, même si les cours ne reprennent qu'en septembre.
 export function currentSchoolYear(): string {
   const now = new Date();
   const year = now.getFullYear();
-  return now.getMonth() >= 8 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  return now.getMonth() >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 }
 
 export function schoolYearOptions(before = 2, after = 1): string[] {

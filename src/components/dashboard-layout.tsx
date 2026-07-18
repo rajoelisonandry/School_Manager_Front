@@ -20,6 +20,7 @@ import {
   X,
   Sun,
   Moon,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,20 @@ import {
 } from "@/components/ui/tooltip";
 import { useState } from "react";
 
-const navigationGroups = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  description: string;
+  adminOnly?: boolean;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const navigationGroups: NavGroup[] = [
   {
     label: "Vue d'ensemble",
     items: [
@@ -83,7 +97,6 @@ const navigationGroups = [
         name: "Suivi des Paiements",
         href: "/dashboard/payment-tracking",
         icon: CalendarCheck,
-        adminOnly: true,
         description: "Voir qui a payé l'écolage et les autres frais, mois par mois",
       },
     ],

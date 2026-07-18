@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,8 @@ interface Class {
 }
 
 export default function ClassesPage() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
   const [classes, setClasses] = useState<Class[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | null>(null);
@@ -85,6 +88,7 @@ export default function ClassesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
 
     if (editingClass) {
       await updateClass(editingClass.id, formData);
@@ -104,6 +108,7 @@ export default function ClassesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isAdmin) return;
     if (confirm("Êtes-vous sûr de vouloir supprimer cette classe ?")) {
       await deleteClass(id);
       loadClasses();
@@ -149,12 +154,23 @@ export default function ClassesPage() {
           subtitle="Gérer les classes du 13 ème à la Terminale"
         />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle Classe
-            </Button>
-          </DialogTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <DialogTrigger asChild>
+                  <Button onClick={() => resetForm()} disabled={!isAdmin}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvelle Classe
+                  </Button>
+                </DialogTrigger>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isAdmin
+                ? "Créer une nouvelle classe"
+                : "Seul un administrateur peut créer une classe"}
+            </TooltipContent>
+          </Tooltip>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -290,11 +306,16 @@ export default function ClassesPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleEdit(cls)}
+                                disabled={!isAdmin}
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Modifier cette classe</TooltipContent>
+                            <TooltipContent>
+                              {isAdmin
+                                ? "Modifier cette classe"
+                                : "Seul un administrateur peut modifier une classe"}
+                            </TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -302,11 +323,20 @@ export default function ClassesPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDelete(cls.id)}
+                                disabled={!isAdmin}
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2
+                                  className={`h-4 w-4 ${
+                                    isAdmin ? "text-destructive" : "text-muted-foreground"
+                                  }`}
+                                />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Supprimer cette classe</TooltipContent>
+                            <TooltipContent>
+                              {isAdmin
+                                ? "Supprimer cette classe"
+                                : "Seul un administrateur peut supprimer une classe"}
+                            </TooltipContent>
                           </Tooltip>
                         </div>
                       </TableCell>

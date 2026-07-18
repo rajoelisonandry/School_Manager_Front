@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,8 @@ function formatAriary(amount: number) {
 }
 
 export default function PaymentTypeRatesPage() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
   const [rates, setRates] = useState<PaymentTypeRate[]>([]);
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -105,6 +108,7 @@ export default function PaymentTypeRatesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
 
     const { schoolYear, ...payload } = formData;
     void schoolYear;
@@ -137,6 +141,7 @@ export default function PaymentTypeRatesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isAdmin) return;
     if (confirm("Êtes-vous sûr de vouloir supprimer ce tarif ?")) {
       await deletePaymentTypeRate(id);
       loadData();
@@ -172,12 +177,23 @@ export default function PaymentTypeRatesPage() {
           }
         />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau Tarif
-            </Button>
-          </DialogTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <DialogTrigger asChild>
+                  <Button onClick={() => resetForm()} disabled={!isAdmin}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Tarif
+                  </Button>
+                </DialogTrigger>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isAdmin
+                ? "Créer un nouveau tarif"
+                : "Seul un administrateur peut créer un tarif"}
+            </TooltipContent>
+          </Tooltip>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -315,11 +331,16 @@ export default function PaymentTypeRatesPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(rate)}
+                            disabled={!isAdmin}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Modifier ce tarif</TooltipContent>
+                        <TooltipContent>
+                          {isAdmin
+                            ? "Modifier ce tarif"
+                            : "Seul un administrateur peut modifier un tarif"}
+                        </TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -327,11 +348,20 @@ export default function PaymentTypeRatesPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(rate.id)}
+                            disabled={!isAdmin}
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Trash2
+                              className={`h-4 w-4 ${
+                                isAdmin ? "text-destructive" : "text-muted-foreground"
+                              }`}
+                            />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Supprimer ce tarif</TooltipContent>
+                        <TooltipContent>
+                          {isAdmin
+                            ? "Supprimer ce tarif"
+                            : "Seul un administrateur peut supprimer un tarif"}
+                        </TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>

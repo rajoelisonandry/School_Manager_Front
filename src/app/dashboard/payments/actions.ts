@@ -88,6 +88,27 @@ export async function getPayments() {
     .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
 }
 
+interface PaginatedBackendPayments {
+  items: BackendPayment[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export async function getPaymentsPaginated(page: number, limit: number, search?: string) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (search) params.set('search', search)
+  const result = await backendFetch<PaginatedBackendPayments>(`/payments/paginated?${params}`)
+  return {
+    items: result.items.map(toFrontPayment),
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+    totalPages: result.totalPages,
+  }
+}
+
 export async function createPayment(data: PaymentInput) {
   const payment = await backendFetch<BackendPayment>('/payments', {
     method: 'POST',
