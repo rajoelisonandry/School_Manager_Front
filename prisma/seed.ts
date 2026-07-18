@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 
 async function main() {
   // Seed Users
-  const usersData = JSON.parse(fs.readFileSync(path.join(__dirname, '../lib/data/users.json'), 'utf-8'))
+  const usersData = JSON.parse(fs.readFileSync(path.join(__dirname, '../src/lib/data/users.json'), 'utf-8'))
   for (const user of usersData.users) {
     await prisma.user.upsert({
       where: { username: user.username },

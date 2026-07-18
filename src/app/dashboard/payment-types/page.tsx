@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,8 @@ function formatAriary(amount: number) {
 }
 
 export default function PaymentTypesPage() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
   const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [rates, setRates] = useState<RateOption[]>([]);
@@ -136,6 +139,8 @@ export default function PaymentTypesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (editingType && !isAdmin) return;
+
     const payload = {
       name: formData.name,
       amount: formData.amount,
@@ -154,6 +159,8 @@ export default function PaymentTypesPage() {
   };
 
   const handleEdit = (type: PaymentType) => {
+    if (!isAdmin) return;
+
     setEditingType(type);
     setFormData({
       name: type.name,
@@ -164,6 +171,8 @@ export default function PaymentTypesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isAdmin) return;
+
     if (confirm("Êtes-vous sûr de vouloir supprimer ce type de paiement ?")) {
       await deletePaymentType(id);
       loadData();
@@ -270,7 +279,7 @@ export default function PaymentTypesPage() {
                 <span className="text-destructive">*</span> Champs obligatoires
               </p>
               <DialogFooter className="mt-2">
-                <Button type="submit">
+                <Button type="submit" disabled={Boolean(editingType) && !isAdmin}>
                   {editingType ? "Modifier" : "Créer"}
                 </Button>
               </DialogFooter>
@@ -350,11 +359,16 @@ export default function PaymentTypesPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(type)}
+                            disabled={!isAdmin}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Modifier ce type de paiement</TooltipContent>
+                        <TooltipContent>
+                          {isAdmin
+                            ? "Modifier ce type de paiement"
+                            : "Seul un administrateur peut modifier un type de paiement"}
+                        </TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -362,11 +376,16 @@ export default function PaymentTypesPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(type.id)}
+                            disabled={!isAdmin}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Supprimer ce type de paiement</TooltipContent>
+                        <TooltipContent>
+                          {isAdmin
+                            ? "Supprimer ce type de paiement"
+                            : "Seul un administrateur peut supprimer un type de paiement"}
+                        </TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>
