@@ -35,7 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X, DollarSign, ChevronLeft, ChevronRight, Pencil, ClipboardCheck, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { getPayments, getPaymentsPaginated, createPaymentBatch, deletePayment } from "./actions";
 import { getStudents } from "../students/actions";
@@ -202,6 +202,8 @@ export default function PaymentsPage() {
   const [rates, setRates] = useState<PaymentTypeRateOption[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState(emptyFormData);
   const [isLoading, setIsLoading] = useState(true);
   const [receiptPayments, setReceiptPayments] = useState<Payment[] | null>(null);
@@ -347,9 +349,19 @@ export default function PaymentsPage() {
 
   const totalPaidInForm = formData.items.reduce((sum, item) => sum + item.amountPaid, 0);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleReviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsDialogOpen(false);
+    setIsPreviewOpen(true);
+  };
 
+  const handleEditFromPreview = () => {
+    setIsPreviewOpen(false);
+    setIsDialogOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsSaving(true);
     const created = await createPaymentBatch({
       studentId: formData.studentId,
       recordedByUserId: currentUser?.id,
@@ -363,8 +375,9 @@ export default function PaymentsPage() {
       })),
     });
 
+    setIsSaving(false);
+    setIsPreviewOpen(false);
     resetForm();
-    setIsDialogOpen(false);
     loadData();
     setHistoryPage(1);
     loadHistory(1, debouncedSearch);
@@ -457,7 +470,7 @@ export default function PaymentsPage() {
                 généraux, Excursion...)
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleReviewSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-1.5">
@@ -648,12 +661,103 @@ export default function PaymentsPage() {
                 <span className="text-destructive">*</span> Champs obligatoires
               </p>
               <DialogFooter className="mt-2">
-                <Button type="submit">Enregistrer</Button>
+                <Button type="submit" className="gap-2">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Vérifier avant d&apos;enregistrer
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Pre-save preview */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              Aperçu avant enregistrement
+            </DialogTitle>
+            <DialogDescription>
+              Vérifiez les informations ci-dessous avant de confirmer. Rien n&apos;est encore
+              enregistré.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              Ce paiement n&apos;est pas encore enregistré. Relisez chaque ligne pour éviter
+              une erreur de saisie.
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Élève</p>
+                <p className="font-medium">
+                  {(() => {
+                    const student = students.find((s) => s.id === formData.studentId);
+                    return student
+                      ? `${student.matricule} - ${student.firstName} ${student.lastName}`
+                      : "-";
+                  })()}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Date de paiement</p>
+                <p className="font-medium">
+                  {formData.paymentDate
+                    ? new Date(formData.paymentDate).toLocaleDateString("fr-FR")
+                    : "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Année scolaire</p>
+                <p className="font-medium">{formData.schoolYear}</p>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border divide-y divide-border">
+              {formData.items.map((item, index) => {
+                const type = paymentTypes.find((t) => t.id === item.paymentTypeId);
+                return (
+                  <div key={index} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div>
+                      <p className="font-medium">{type?.name ?? "-"}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{item.month}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{formatAriary(item.amountPaid)}</p>
+                      {item.amountPaid < item.amountDue && (
+                        <p className="text-xs text-muted-foreground">
+                          dû {formatAriary(item.amountDue)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between text-sm font-semibold pt-1">
+              <span>Total payé</span>
+              <span>{formatAriary(totalPaidInForm)}</span>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={handleEditFromPreview} className="gap-2">
+              <Pencil className="h-4 w-4" />
+              Modifier
+            </Button>
+            <Button onClick={handleConfirmSave} disabled={isSaving} className="gap-2">
+              <CheckCircle className="h-4 w-4" />
+              {isSaving ? "Enregistrement..." : "Confirmer et Enregistrer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Receipt preview */}
       <Dialog open={!!receiptPayments} onOpenChange={(open) => !open && setReceiptPayments(null)}>
