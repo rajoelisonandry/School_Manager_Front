@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -122,12 +123,12 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
       <p className="mt-1 text-center text-[10px] font-semibold uppercase tracking-wide">
         {label}
       </p>
-      <div className="my-2 border-t border-dashed border-foreground/30" />
+      <div className="my-1 border-t border-dashed border-foreground/30" />
       <p className="text-center font-semibold">REÇU DE PAIEMENT</p>
       <p className="text-center text-muted-foreground">
         N° {first.receiptNumber.padStart(6, "0")}
       </p>
-      <div className="my-2 border-t border-dashed border-foreground/30" />
+      <div className="my-1 border-t border-dashed border-foreground/30" />
 
       <div className="space-y-1">
         <div className="flex justify-between gap-2">
@@ -144,9 +145,9 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
         </div>
       </div>
 
-      <div className="my-2 border-t border-dashed border-foreground/30" />
+      <div className="my-1 border-t border-dashed border-foreground/30" />
 
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {payments.map((p) => (
           <div key={p.id}>
             <div className="flex justify-between gap-2">
@@ -163,7 +164,7 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
         ))}
       </div>
 
-      <div className="my-2 border-t border-dashed border-foreground/30" />
+      <div className="my-1 border-t border-dashed border-foreground/30" />
 
       <div className="space-y-1">
         <div className="flex justify-between gap-2 font-bold">
@@ -178,13 +179,13 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
         )}
       </div>
 
-      <div className="my-2 border-t border-dashed border-foreground/30" />
+      <div className="my-1 border-t border-dashed border-foreground/30" />
 
       <p className="text-center text-[10px] text-muted-foreground">
         Enregistré par {first.recordedByName ?? "-"}
       </p>
 
-      <div className="my-2 border-t border-dashed border-foreground/30" />
+      <div className="my-1 border-t border-dashed border-foreground/30" />
 
       <p className="text-center font-semibold">Merci de votre confiance !</p>
     </div>
@@ -783,10 +784,7 @@ export default function PaymentsPage() {
           </DialogHeader>
 
           {receiptPayments && (
-            <div
-              id="payment-receipt"
-              className="mx-auto max-h-[65vh] w-full max-w-[280px] overflow-y-auto rounded-md border border-dashed border-foreground/30 bg-card p-4"
-            >
+            <div className="mx-auto max-h-[65vh] w-full max-w-[280px] overflow-y-auto rounded-md border border-dashed border-foreground/30 bg-card p-4">
               <ReceiptCopy payments={receiptPayments} label="Exemplaire Client" />
 
               <div className="my-4 flex items-center gap-2 text-muted-foreground">
@@ -810,6 +808,23 @@ export default function PaymentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Print-only copy: rendered directly on <body>, outside the Dialog, so it
+          has no transformed ancestor to fight with position:fixed at print time */}
+      {receiptPayments &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div id="payment-receipt" className="hidden print:block">
+            <ReceiptCopy payments={receiptPayments} label="Exemplaire Client" />
+            <div className="my-2 flex items-center gap-2 text-muted-foreground">
+              <div className="flex-1 border-t border-dashed border-foreground/40" />
+              <Scissors className="h-3 w-3 shrink-0" />
+              <div className="flex-1 border-t border-dashed border-foreground/40" />
+            </div>
+            <ReceiptCopy payments={receiptPayments} label="Exemplaire École" />
+          </div>,
+          document.body
+        )}
 
       {/* Statistics */}
       {canSeeStats && (

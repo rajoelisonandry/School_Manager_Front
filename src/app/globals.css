@@ -130,6 +130,18 @@
 }
 
 @media print {
+  @page {
+    margin: 6mm;
+  }
+
+  /* Retire tout le tableau de bord du flux (évite les pages blanches en trop). */
+  body.print-receipt #app-shell {
+    display: none !important;
+  }
+
+  /* #payment-receipt est rendu via un portail directement sur <body>, donc sans
+     aucun ancêtre transformé (contrairement au Dialog) : le flux normal suffit,
+     pas besoin de position:fixed/absolute. */
   body.print-receipt * {
     visibility: hidden;
   }
@@ -138,10 +150,13 @@
     visibility: visible;
   }
   body.print-receipt #payment-receipt {
-    position: fixed;
-    inset: 0;
-    margin: 0 auto;
-    max-height: none;
-    overflow: visible;
+    max-width: 300px;
+    margin: 0;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body.print-receipt #payment-receipt * {
+    color: #000 !important;
+    border-color: #000 !important;
   }
 }
