@@ -45,6 +45,7 @@ import { getPaymentTypes } from "../payment-types/actions";
 import { getClasses } from "../classes/actions";
 import { currentSchoolYear, schoolYearOptions, schoolYearStart } from "@/lib/school-year";
 import { PageHeader } from "@/components/page-header";
+import { PageListSkeleton } from "@/components/loading-skeletons";
 
 interface PaymentTypeRate {
   id: string;
@@ -154,7 +155,9 @@ export default function PaymentTypeRatesPage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return (
+      <PageListSkeleton tableCols={5} tableRows={5} tableHeaderControls={0} withHeaderActionButton />
+    );
   }
 
   return (

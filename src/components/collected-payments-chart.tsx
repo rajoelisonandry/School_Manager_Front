@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { startOfDay, startOfWeek, startOfMonth } from "@/lib/date-utils";
 
 interface PaymentPoint {
   amountPaid: number;
@@ -22,23 +23,6 @@ const GRANULARITY_OPTIONS: { value: Granularity; label: string; count: number }[
   { value: "week", label: "Semaine", count: 8 },
   { value: "month", label: "Mois", count: 6 },
 ];
-
-function startOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfWeek(date: Date) {
-  const d = startOfDay(date);
-  const mondayOffset = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - mondayOffset);
-  return d;
-}
-
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
 
 function buildBuckets(granularity: Granularity, count: number, payments: PaymentPoint[]): Bucket[] {
   const now = new Date();

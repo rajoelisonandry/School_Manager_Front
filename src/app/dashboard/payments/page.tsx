@@ -37,6 +37,7 @@ import {
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X, DollarSign, ChevronLeft, ChevronRight, Pencil, ClipboardCheck, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { PageListSkeleton } from "@/components/loading-skeletons";
 import { getPayments, getPaymentsPaginated, createPaymentBatch, deletePayment } from "./actions";
 import { getStudents } from "../students/actions";
 import { getPaymentTypes } from "../payment-types/actions";
@@ -444,7 +445,16 @@ export default function PaymentsPage() {
   const totalPending = totalExpected - totalCollected;
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return (
+      <PageListSkeleton
+        withStats
+        statCount={3}
+        tableCols={9}
+        tableRows={HISTORY_LIMIT}
+        tableHeaderControls={1}
+        withHeaderActionButton
+      />
+    );
   }
 
   return (

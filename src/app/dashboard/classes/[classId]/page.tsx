@@ -15,6 +15,8 @@ import { ArrowLeft, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getClasses } from "../actions";
 import { getStudents } from "../../students/actions";
+import { TableSkeleton, StatCardsSkeleton } from "@/components/loading-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Student {
   id: string;
@@ -62,7 +64,22 @@ export default function ClassStudentsPage({
   }, [params.classId]);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <Skeleton className="h-9 w-24" />
+            <div className="space-y-2">
+              <Skeleton className="h-7 w-32" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+          </div>
+          <Skeleton className="h-5 w-32" />
+        </div>
+        <TableSkeleton rows={5} cols={8} headerControls={0} />
+        <StatCardsSkeleton count={3} />
+      </div>
+    );
   }
 
   if (!selectedClass) {

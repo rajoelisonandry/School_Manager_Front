@@ -43,6 +43,7 @@ import { DocumentUploadField } from "@/components/document-upload-field";
 import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
 import { schoolYearOptions, schoolYearStart } from "@/lib/school-year";
+import { PageListSkeleton } from "@/components/loading-skeletons";
 
 interface Student {
   id: string;
@@ -245,7 +246,14 @@ export default function StudentsPage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return (
+      <PageListSkeleton
+        tableCols={10}
+        tableRows={6}
+        tableHeaderControls={4}
+        withHeaderActionButton
+      />
+    );
   }
 
   return (

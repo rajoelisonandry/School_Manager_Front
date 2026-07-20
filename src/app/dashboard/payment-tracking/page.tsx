@@ -36,6 +36,7 @@ import {
   schoolYearOptions,
 } from "@/lib/school-year";
 import { exportPaymentTrackingPdf } from "@/lib/pdf/payment-tracking-pdf";
+import { PageListSkeleton } from "@/components/loading-skeletons";
 
 interface Student {
   id: string;
@@ -168,7 +169,15 @@ export default function PaymentTrackingPage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return (
+      <PageListSkeleton
+        filters={3}
+        tableCols={9}
+        tableRows={6}
+        tableHeaderControls={0}
+        withHeaderActionButton={false}
+      />
+    );
   }
 
   return (

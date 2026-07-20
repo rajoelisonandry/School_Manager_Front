@@ -8,12 +8,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Users, GraduationCap, Wallet, TrendingUp, Info, BarChart3, LayoutDashboard } from "lucide-react";
+import { Users, GraduationCap, Wallet, CalendarDays, TrendingUp, Info, BarChart3, LayoutDashboard } from "lucide-react";
 import { getStudents } from "./students/actions";
 import { getClasses } from "./classes/actions";
 import { getPayments } from "./payments/actions";
 import { CollectedPaymentsChart } from "@/components/collected-payments-chart";
 import { PageHeader } from "@/components/page-header";
+import { DashboardSkeleton } from "@/components/loading-skeletons";
+import { startOfDay, startOfWeek } from "@/lib/date-utils";
 
 function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
@@ -31,6 +33,8 @@ export default function DashboardPage() {
   const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPayments>>>([]);
   const [totalCollected, setTotalCollected] = useState(0);
   const [totalExpected, setTotalExpected] = useState(0);
+  const [collectedToday, setCollectedToday] = useState(0);
+  const [collectedThisWeek, setCollectedThisWeek] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -59,6 +63,19 @@ export default function DashboardPage() {
       setTotalCollected(payments.reduce((sum, p) => sum + p.amountPaid, 0));
       setTotalExpected(payments.reduce((sum, p) => sum + p.amountDue, 0));
 
+      const todayStart = startOfDay(new Date());
+      const weekStart = startOfWeek(new Date());
+      setCollectedToday(
+        payments
+          .filter((p) => new Date(p.paymentDate) >= todayStart)
+          .reduce((sum, p) => sum + p.amountPaid, 0)
+      );
+      setCollectedThisWeek(
+        payments
+          .filter((p) => new Date(p.paymentDate) >= weekStart)
+          .reduce((sum, p) => sum + p.amountPaid, 0)
+      );
+
       setIsLoading(false);
     };
     loadData();
@@ -68,7 +85,7 @@ export default function DashboardPage() {
   const progress = totalExpected > 0 ? (totalCollected / totalExpected) * 100 : 0;
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -80,7 +97,7 @@ export default function DashboardPage() {
       />
 
       {/* Statistics Cards */}
-      <div className={`grid gap-6 md:grid-cols-2 ${canSeeStats ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+      <div className={`grid gap-6 md:grid-cols-2 ${canSeeStats ? "lg:grid-cols-4" : "lg:grid-cols-2"}`}>
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-blue-100 flex items-center gap-1.5">
@@ -135,24 +152,51 @@ export default function DashboardPage() {
         <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-amber-100 flex items-center gap-1.5">
-              Paiements Collectés
+              Collecté Aujourd&apos;hui
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-3.5 w-3.5 opacity-80 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  Somme totale déjà payée par les élèves, sur le total attendu
+                  Somme des paiements enregistrés aujourd&apos;hui
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold">{formatAriary(totalCollected)}</div>
+              <div className="text-3xl font-bold">{formatAriary(collectedToday)}</div>
               <Wallet className="h-8 w-8 text-amber-200" />
             </div>
             <p className="text-xs text-amber-100 mt-2">
-              Sur {formatAriary(totalExpected)} attendu
+              Sur {formatAriary(totalExpected)} attendu au total
+            </p>
+          </CardContent>
+        </Card>
+        )}
+
+        {canSeeStats && (
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-purple-100 flex items-center gap-1.5">
+              Collecté Cette Semaine
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 opacity-80 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Somme des paiements enregistrés depuis lundi
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-3xl font-bold">{formatAriary(collectedThisWeek)}</div>
+              <CalendarDays className="h-8 w-8 text-purple-200" />
+            </div>
+            <p className="text-xs text-purple-100 mt-2">
+              Sur {formatAriary(totalExpected)} attendu au total
             </p>
           </CardContent>
         </Card>

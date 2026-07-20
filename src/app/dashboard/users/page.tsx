@@ -37,6 +37,7 @@ import {
 import { Plus, Pencil, Trash2, Search, Shield, UserCog, Info } from "lucide-react";
 import { getUsers, createUser, updateUser, deleteUser } from "./actions";
 import { PageHeader } from "@/components/page-header";
+import { PageListSkeleton } from "@/components/loading-skeletons";
 
 interface User {
   id: string;
@@ -166,7 +167,9 @@ export default function UsersPage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return (
+      <PageListSkeleton withStats statCount={2} tableCols={6} tableRows={5} tableHeaderControls={1} withHeaderActionButton />
+    );
   }
 
   return (

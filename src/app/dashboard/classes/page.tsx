@@ -37,6 +37,8 @@ import {
 import { Plus, Pencil, Trash2, Users, Info, GraduationCap } from "lucide-react";
 import { getClasses, createClass, updateClass, deleteClass } from './actions'
 import { PageHeader } from "@/components/page-header";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/loading-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Class {
   id: string;
@@ -142,7 +144,16 @@ export default function ClassesPage() {
   }, {} as Record<string, Class[]>);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Chargement...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <PageHeaderSkeleton />
+          <Skeleton className="h-10 w-40" />
+        </div>
+        <TableSkeleton rows={3} cols={5} headerControls={0} />
+        <TableSkeleton rows={3} cols={5} headerControls={0} />
+      </div>
+    );
   }
 
   return (
