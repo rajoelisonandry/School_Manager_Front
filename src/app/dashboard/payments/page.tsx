@@ -192,6 +192,16 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
   );
 }
 
+function CutLine({ className = "my-2" }: { className?: string }) {
+  return (
+    <div className={`flex items-center gap-2 text-muted-foreground ${className}`}>
+      <div className="flex-1 border-t border-dashed border-foreground/40" />
+      <Scissors className="h-3 w-3 shrink-0" />
+      <div className="flex-1 border-t border-dashed border-foreground/40" />
+    </div>
+  );
+}
+
 const HISTORY_LIMIT = 10;
 
 export default function PaymentsPage() {
@@ -786,14 +796,10 @@ export default function PaymentsPage() {
           {receiptPayments && (
             <div className="mx-auto max-h-[65vh] w-full max-w-[280px] overflow-y-auto rounded-md border border-dashed border-foreground/30 bg-card p-4">
               <ReceiptCopy payments={receiptPayments} label="Exemplaire Client" />
-
-              <div className="my-4 flex items-center gap-2 text-muted-foreground">
-                <div className="flex-1 border-t border-dashed border-foreground/40" />
-                <Scissors className="h-3 w-3 shrink-0" />
-                <div className="flex-1 border-t border-dashed border-foreground/40" />
-              </div>
-
+              <CutLine />
               <ReceiptCopy payments={receiptPayments} label="Exemplaire École" />
+              <CutLine className="mt-6 mb-2" />
+              <div className="h-[2cm]" />
             </div>
           )}
 
@@ -816,12 +822,10 @@ export default function PaymentsPage() {
         createPortal(
           <div id="payment-receipt" className="hidden print:block">
             <ReceiptCopy payments={receiptPayments} label="Exemplaire Client" />
-            <div className="my-2 flex items-center gap-2 text-muted-foreground">
-              <div className="flex-1 border-t border-dashed border-foreground/40" />
-              <Scissors className="h-3 w-3 shrink-0" />
-              <div className="flex-1 border-t border-dashed border-foreground/40" />
-            </div>
+            <CutLine />
             <ReceiptCopy payments={receiptPayments} label="Exemplaire École" />
+            <CutLine className="mt-6 mb-2" />
+            <div className="h-[2cm]" />
           </div>,
           document.body
         )}

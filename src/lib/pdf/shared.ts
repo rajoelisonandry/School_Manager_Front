@@ -2,6 +2,8 @@ import { jsPDF } from "jspdf";
 import { currentSchoolYear } from "@/lib/school-year";
 
 export const PRIMARY: [number, number, number] = [21, 60, 94];
+export const SCHOOL_ADDRESS = "Lot 077 G Bis Ambohibao Antehiroka";
+export const SCHOOL_PHONE = "+261 34 01 332 78";
 
 export function getFinalY(doc: jsPDF): number {
   return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;

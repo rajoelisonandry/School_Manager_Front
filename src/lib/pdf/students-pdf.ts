@@ -16,11 +16,11 @@ interface ClassOption {
   name: string;
 }
 
-function genderLabel(gender: string) {
+export function genderLabel(gender: string) {
   return gender === "M" ? "Masculin" : "Féminin";
 }
 
-function formatDate(date: string) {
+export function formatDate(date: string) {
   return date ? new Date(date).toLocaleDateString("fr-FR") : "-";
 }
 
