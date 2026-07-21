@@ -194,6 +194,74 @@ function drawAbstractBackground(doc: jsPDF, pageWidth: number, pageHeight: numbe
   doc.restoreGraphicsState();
 }
 
+const KID_PALETTE: [number, number, number][] = [
+  [255, 196, 0], // jaune
+  [255, 99, 132], // rose
+  [76, 201, 127], // vert
+  [64, 156, 255], // bleu ciel
+  ACCENT,
+];
+
+function starPoints(cx: number, cy: number, outerR: number, innerR: number): [number, number][] {
+  const points: [number, number][] = [];
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    points.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+  }
+  return points;
+}
+
+function drawStar(doc: jsPDF, cx: number, cy: number, outerR: number, innerR: number) {
+  const pts = starPoints(cx, cy, outerR, innerR);
+  const segments: [number, number][] = [];
+  for (let i = 1; i < pts.length; i++) {
+    segments.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
+  }
+  doc.lines(segments, pts[0][0], pts[0][1], [1, 1], "F", true);
+}
+
+// Fond abstrait plus enfantin (classes de primaire) : ronds colorés façon confettis
+// et petites étoiles, dans une palette vive plutôt que les tons sobres bleu/orange.
+function drawPlayfulBackground(doc: jsPDF, pageWidth: number, pageHeight: number) {
+  doc.saveGraphicsState();
+
+  const dots: { x: number; y: number; r: number; color: [number, number, number]; opacity: number }[] = [
+    { x: pageWidth * 0.06, y: pageHeight * 0.1, r: 14, color: KID_PALETTE[0], opacity: 0.22 },
+    { x: pageWidth * 0.92, y: pageHeight * 0.08, r: 20, color: KID_PALETTE[3], opacity: 0.18 },
+    { x: pageWidth * 0.04, y: pageHeight * 0.5, r: 10, color: KID_PALETTE[1], opacity: 0.2 },
+    { x: pageWidth * 0.96, y: pageHeight * 0.45, r: 16, color: KID_PALETTE[2], opacity: 0.2 },
+    { x: pageWidth * 0.1, y: pageHeight * 0.88, r: 22, color: KID_PALETTE[4], opacity: 0.18 },
+    { x: pageWidth * 0.9, y: pageHeight * 0.92, r: 18, color: KID_PALETTE[0], opacity: 0.2 },
+    { x: pageWidth * 0.5, y: pageHeight * 1.02, r: 40, color: KID_PALETTE[3], opacity: 0.14 },
+    { x: pageWidth * 0.5, y: -6, r: 34, color: KID_PALETTE[1], opacity: 0.12 },
+    { x: pageWidth * 0.3, y: pageHeight * 0.2, r: 6, color: KID_PALETTE[2], opacity: 0.25 },
+    { x: pageWidth * 0.72, y: pageHeight * 0.28, r: 5, color: KID_PALETTE[0], opacity: 0.25 },
+    { x: pageWidth * 0.22, y: pageHeight * 0.7, r: 5, color: KID_PALETTE[3], opacity: 0.25 },
+    { x: pageWidth * 0.8, y: pageHeight * 0.65, r: 6, color: KID_PALETTE[1], opacity: 0.25 },
+  ];
+  for (const dot of dots) {
+    doc.setGState(new GState({ opacity: dot.opacity }));
+    doc.setFillColor(...dot.color);
+    doc.circle(dot.x, dot.y, dot.r, "F");
+  }
+
+  const stars: { x: number; y: number; r: number; color: [number, number, number] }[] = [
+    { x: pageWidth * 0.14, y: pageHeight * 0.32, r: 7, color: KID_PALETTE[0] },
+    { x: pageWidth * 0.86, y: pageHeight * 0.18, r: 6, color: KID_PALETTE[1] },
+    { x: pageWidth * 0.2, y: pageHeight * 0.78, r: 5, color: KID_PALETTE[3] },
+    { x: pageWidth * 0.78, y: pageHeight * 0.82, r: 6, color: KID_PALETTE[2] },
+  ];
+  doc.setGState(new GState({ opacity: 0.28 }));
+  for (const star of stars) {
+    doc.setFillColor(...star.color);
+    drawStar(doc, star.x, star.y, star.r, star.r * 0.45);
+  }
+
+  doc.setGState(new GState({ opacity: 1 }));
+  doc.restoreGraphicsState();
+}
+
 // Cadre fin + petits repères d'angle façon "viseur" : aucune couleur de fond,
 // juste des traits, pour un rendu moderne qui occupe toute la hauteur de la page.
 function drawFrame(doc: jsPDF, x: number, y: number, w: number, h: number) {
@@ -219,13 +287,18 @@ async function drawCoverPage(
   doc: jsPDF,
   student: StudentForCarnet,
   className: string,
-  schoolYear: string
+  schoolYear: string,
+  classLevel: string
 ) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const centerX = pageWidth / 2;
 
-  drawAbstractBackground(doc, pageWidth, pageHeight);
+  if (classLevel?.toLowerCase() === "primaire") {
+    drawPlayfulBackground(doc, pageWidth, pageHeight);
+  } else {
+    drawAbstractBackground(doc, pageWidth, pageHeight);
+  }
   drawFoldGuide(doc, centerX, pageHeight);
 
   const frameX = centerX + 8;
@@ -478,12 +551,13 @@ function drawInfoPage(
 export async function exportCarnetCoverPdf(
   student: StudentForCarnet,
   className: string,
-  schoolYear: string
+  schoolYear: string,
+  classLevel: string = ""
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   await registerPoppins(doc);
 
-  await drawCoverPage(doc, student, className, schoolYear);
+  await drawCoverPage(doc, student, className, schoolYear, classLevel);
 
   doc.addPage("a4", "landscape");
   drawInfoPage(doc, student, className, schoolYear);

@@ -50,6 +50,7 @@ interface Student {
 interface ClassOption {
   id: string;
   name: string;
+  level: string;
 }
 
 const ALL_CLASSES = "all";
@@ -75,8 +76,9 @@ export default function CarnetCorrespondancePage() {
     classFilter === ALL_CLASSES ? students : students.filter((s) => s.classId === classFilter);
 
   const selectedStudent = students.find((s) => s.id === studentId) ?? null;
-  const selectedClassName =
-    classes.find((c) => c.id === selectedStudent?.classId)?.name ?? "-";
+  const selectedClass = classes.find((c) => c.id === selectedStudent?.classId);
+  const selectedClassName = selectedClass?.name ?? "-";
+  const selectedClassLevel = selectedClass?.level ?? "";
 
   const handleClassFilterChange = (value: string) => {
     setClassFilter(value);
@@ -112,7 +114,8 @@ export default function CarnetCorrespondancePage() {
           identityPhotoUrl: backendFileUrl(selectedStudent.identityPhotoUrl) ?? undefined,
         },
         selectedClassName,
-        schoolYear
+        schoolYear,
+        selectedClassLevel
       );
     } finally {
       setIsGenerating(false);

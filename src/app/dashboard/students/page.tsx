@@ -149,6 +149,26 @@ export default function StudentsPage() {
     return matchesSearch && matchesClass && matchesYear;
   });
 
+  // Sans filtre actif, on regroupe par classe (comme la page Classes) ; dès qu'un
+  // filtre réduit la liste, un simple tableau à plat est plus lisible.
+  const hasActiveFilter =
+    classFilter !== ALL_CLASSES || schoolYearFilter !== ALL_YEARS || searchTerm.trim() !== "";
+
+  const studentsByClass = new Map<string, Student[]>();
+  for (const student of filteredStudents) {
+    const key = student.classId || "unassigned";
+    if (!studentsByClass.has(key)) studentsByClass.set(key, []);
+    studentsByClass.get(key)!.push(student);
+  }
+  const classGroups = [
+    ...classes
+      .filter((cls) => studentsByClass.has(cls.id))
+      .map((cls) => ({ id: cls.id, name: cls.name, students: studentsByClass.get(cls.id)! })),
+    ...(studentsByClass.has("unassigned")
+      ? [{ id: "unassigned", name: "Non assigné", students: studentsByClass.get("unassigned")! }]
+      : []),
+  ];
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -244,6 +264,133 @@ export default function StudentsPage() {
       classFilter === ALL_CLASSES ? null : classFilter
     );
   };
+
+  const renderStudentsTable = (list: Student[], showClassColumn: boolean) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Numéro</TableHead>
+          <TableHead>Matricule</TableHead>
+          <TableHead>Nom Complet</TableHead>
+          {showClassColumn && <TableHead>Classe</TableHead>}
+          <TableHead>Naissance</TableHead>
+          <TableHead>Téléphone(s)</TableHead>
+          <TableHead>Père</TableHead>
+          <TableHead>Mère</TableHead>
+          <TableHead>Statut</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {list.map((student, index) => (
+          <TableRow
+            key={student.id}
+            className="cursor-pointer"
+            onClick={() => handleView(student)}
+          >
+            <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+            <TableCell className="font-medium">{student.matricule}</TableCell>
+            <TableCell className="font-medium">
+              {student.firstName} {student.lastName}
+            </TableCell>
+            {showClassColumn && <TableCell>{getClassName(student.classId)}</TableCell>}
+            <TableCell>
+              {new Date(student.dateOfBirth).toLocaleDateString("fr-FR")}
+              <div className="text-xs text-muted-foreground">
+                {student.placeOfBirth}
+              </div>
+            </TableCell>
+            <TableCell>{student.phones?.join(", ") || "-"}</TableCell>
+            <TableCell>
+              {student.fatherName || "-"}
+              {student.fatherProfession && (
+                <div className="text-xs text-muted-foreground">
+                  {student.fatherProfession}
+                </div>
+              )}
+            </TableCell>
+            <TableCell>
+              {student.motherName || "-"}
+              {student.motherProfession && (
+                <div className="text-xs text-muted-foreground">
+                  {student.motherProfession}
+                </div>
+              )}
+            </TableCell>
+            <TableCell>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  student.status === "active"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                }`}
+              >
+                {student.status === "active" ? "Actif" : "Inactif"}
+              </span>
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleView(student)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Voir le détail de l&apos;élève</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(student)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Modifier cet élève</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(student.id)}
+                    >
+                      {isAdmin ? (
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <UserX className="h-4 w-4 text-amber-600" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isAdmin
+                      ? "Supprimer cet élève"
+                      : "Désactiver cet élève (seul un administrateur peut le supprimer)"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+        {list.length === 0 && (
+          <TableRow>
+            <TableCell
+              colSpan={showClassColumn ? 10 : 9}
+              className="text-center text-muted-foreground py-8"
+            >
+              Aucun élève trouvé
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
 
   if (isLoading) {
     return (
@@ -776,133 +923,33 @@ export default function StudentsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Numéro</TableHead>
-                <TableHead>Matricule</TableHead>
-                <TableHead>Nom Complet</TableHead>
-                <TableHead>Classe</TableHead>
-                <TableHead>Naissance</TableHead>
-                <TableHead>Téléphone(s)</TableHead>
-                <TableHead>Père</TableHead>
-                <TableHead>Mère</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredStudents.map((student, index) => (
-                <TableRow
-                  key={student.id}
-                  className="cursor-pointer"
-                  onClick={() => handleView(student)}
-                >
-                  <TableCell className="text-muted-foreground">{index + 1}</TableCell>
-                  <TableCell className="font-medium">{student.matricule}</TableCell>
-                  <TableCell className="font-medium">
-                    {student.firstName} {student.lastName}
-                  </TableCell>
-                  <TableCell>{getClassName(student.classId)}</TableCell>
-                  <TableCell>
-                    {new Date(student.dateOfBirth).toLocaleDateString("fr-FR")}
-                    <div className="text-xs text-muted-foreground">
-                      {student.placeOfBirth}
-                    </div>
-                  </TableCell>
-                  <TableCell>{student.phones?.join(", ") || "-"}</TableCell>
-                  <TableCell>
-                    {student.fatherName || "-"}
-                    {student.fatherProfession && (
-                      <div className="text-xs text-muted-foreground">
-                        {student.fatherProfession}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {student.motherName || "-"}
-                    {student.motherProfession && (
-                      <div className="text-xs text-muted-foreground">
-                        {student.motherProfession}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        student.status === "active"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
-                      }`}
-                    >
-                      {student.status === "active" ? "Actif" : "Inactif"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleView(student)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Voir le détail de l&apos;élève</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(student)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Modifier cet élève</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(student.id)}
-                          >
-                            {isAdmin ? (
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            ) : (
-                              <UserX className="h-4 w-4 text-amber-600" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {isAdmin
-                            ? "Supprimer cet élève"
-                            : "Désactiver cet élève (seul un administrateur peut le supprimer)"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredStudents.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={10}
-                    className="text-center text-muted-foreground py-8"
-                  >
-                    Aucun élève trouvé
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
       </Card>
+
+      {hasActiveFilter ? (
+        <Card>
+          <CardContent>{renderStudentsTable(filteredStudents, true)}</CardContent>
+        </Card>
+      ) : classGroups.length > 0 ? (
+        classGroups.map((group) => (
+          <Card key={group.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {group.name}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({group.students.length})
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>{renderStudentsTable(group.students, false)}</CardContent>
+          </Card>
+        ))
+      ) : (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Aucun élève trouvé
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
