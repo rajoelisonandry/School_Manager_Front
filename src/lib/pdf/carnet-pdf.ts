@@ -1,6 +1,6 @@
 import { jsPDF, GState } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { PRIMARY, SCHOOL_ADDRESS, SCHOOL_PHONE, slugify } from "./shared";
+import { PRIMARY, ACCENT, SCHOOL_ADDRESS, SCHOOL_PHONE, slugify } from "./shared";
 import { genderLabel, formatDate } from "./students-pdf";
 
 export interface StudentForCarnet {
@@ -25,7 +25,6 @@ export interface StudentForCarnet {
 const LIGHT: [number, number, number] = PRIMARY.map((c) =>
   Math.round(c + (255 - c) * 0.75)
 ) as [number, number, number];
-const ACCENT: [number, number, number] = [222, 142, 53];
 const MARGIN = 14;
 const CORNER_MARK_LENGTH = 9;
 
@@ -464,8 +463,7 @@ async function drawCoverPage(
 function drawInfoPage(
   doc: jsPDF,
   student: StudentForCarnet,
-  className: string,
-  schoolYear: string
+  className: string
 ) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -509,9 +507,7 @@ function drawInfoPage(
     ["Lieu de naissance", student.placeOfBirth || "-"],
     ["Genre", genderLabel(student.gender)],
     ["Classe", className],
-    ["Année scolaire", schoolYear],
     ["Adresse", student.address || "-"],
-    ["Téléphone(s)", student.phones?.filter(Boolean).join(", ") || "-"],
     ["Nom du père", student.fatherName || "-"],
     ["Profession du père", student.fatherProfession || "-"],
     ["Nom de la mère", student.motherName || "-"],
@@ -523,8 +519,13 @@ function drawInfoPage(
     rows.push(["Profession du tuteur", student.guardianProfession || "-"]);
   }
 
+  // Téléphone(s) mis en évidence dans un bandeau tout en bas, plutôt que noyé dans la liste.
+  const phoneFooterH = 20;
+  const phoneFooterGap = 6;
+  const phoneFooterY = contentBottom - phoneFooterH;
   const tableY = contentTop + 28;
-  const rowH = (contentBottom - tableY) / rows.length;
+  const tableBottom = phoneFooterY - phoneFooterGap;
+  const rowH = (tableBottom - tableY) / rows.length;
 
   autoTable(doc, {
     startY: tableY,
@@ -543,9 +544,22 @@ function drawInfoPage(
       0: { fontStyle: "bold", textColor: PRIMARY, cellWidth: contentW * 0.4 },
       1: { cellWidth: contentW * 0.6 },
     },
-    margin: { left: contentX, right: pageWidth - (contentX + contentW), bottom: MARGIN },
+    margin: { left: contentX, right: pageWidth - (contentX + contentW), bottom: pageHeight - tableBottom },
     tableWidth: contentW,
   });
+
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.5);
+  doc.line(contentX, phoneFooterY, contentX + contentW, phoneFooterY);
+  doc.setFont(POPPINS, "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...PRIMARY);
+  doc.text("TÉLÉPHONE(S)", contentX + contentW / 2, phoneFooterY + 8, { align: "center" });
+  doc.setFont(POPPINS, "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(0, 0, 0);
+  const phonesText = student.phones?.filter(Boolean).join("   •   ") || "-";
+  doc.text(phonesText, contentX + contentW / 2, phoneFooterY + 15, { align: "center" });
 }
 
 export async function exportCarnetCoverPdf(
@@ -560,7 +574,7 @@ export async function exportCarnetCoverPdf(
   await drawCoverPage(doc, student, className, schoolYear, classLevel);
 
   doc.addPage("a4", "landscape");
-  drawInfoPage(doc, student, className, schoolYear);
+  drawInfoPage(doc, student, className);
 
   doc.save(`carnet-${slugify(`${student.lastName}-${student.firstName}`)}.pdf`);
 }

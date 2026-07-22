@@ -184,7 +184,7 @@ export default function CarnetCorrespondancePage() {
                 emptyMessage="Aucun élève dans cette classe"
                 options={studentsForSelect.map((student) => ({
                   value: student.id,
-                  label: `${student.matricule} - ${student.firstName} ${student.lastName}`,
+                  label: `${student.matricule} - ${student.lastName} ${student.firstName}`,
                   keywords: `${student.matricule} ${student.firstName} ${student.lastName}`,
                 }))}
               />

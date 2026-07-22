@@ -24,6 +24,7 @@ interface BackendStudent {
   address: string
   phones: string[]
   schoolClass?: { id: number }
+  createdAt: string
 }
 
 export interface StudentInput {
@@ -70,6 +71,7 @@ function toFrontStudent(student: BackendStudent) {
     birthCertificateUrl: student.birthCertificateUrl ?? '',
     residenceCertificateUrl: student.residenceCertificateUrl ?? '',
     classId: student.schoolClass ? String(student.schoolClass.id) : '',
+    createdAt: student.createdAt,
   }
 }
 

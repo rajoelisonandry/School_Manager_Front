@@ -66,6 +66,7 @@ interface Student {
   identityPhotoUrl: string;
   birthCertificateUrl: string;
   residenceCertificateUrl: string;
+  createdAt: string;
 }
 
 interface ClassOption {
@@ -125,7 +126,11 @@ export default function StudentsPage() {
       getClasses(),
       getPayments(),
     ]);
-    setStudents(studentsData);
+    // Triés par date de création (plus récent en premier), quel que soit l'ordre renvoyé par l'API.
+    const sortedStudents = [...studentsData].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    setStudents(sortedStudents);
     setClasses(classesData);
     setPayments(paymentsData);
     setIsLoading(false);
@@ -222,8 +227,9 @@ export default function StudentsPage() {
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
-    const { id, ...editableFields } = student;
+    const { id, createdAt, ...editableFields } = student;
     void id;
+    void createdAt;
     setFormData(editableFields);
     setIsDialogOpen(true);
   };
@@ -291,7 +297,7 @@ export default function StudentsPage() {
             <TableCell className="text-muted-foreground">{index + 1}</TableCell>
             <TableCell className="font-medium">{student.matricule}</TableCell>
             <TableCell className="font-medium">
-              {student.firstName} {student.lastName}
+              {student.lastName} {student.firstName}
             </TableCell>
             {showClassColumn && <TableCell>{getClassName(student.classId)}</TableCell>}
             <TableCell>
@@ -722,7 +728,7 @@ export default function StudentsPage() {
             <>
               <DialogHeader>
                 <DialogTitle>
-                  {viewingStudent.firstName} {viewingStudent.lastName}
+                  {viewingStudent.lastName} {viewingStudent.firstName}
                 </DialogTitle>
                 <DialogDescription>
                   Matricule {viewingStudent.matricule} · {getClassName(viewingStudent.classId)}

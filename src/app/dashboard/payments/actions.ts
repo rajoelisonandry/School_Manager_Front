@@ -58,7 +58,7 @@ function toFrontPayment(payment: BackendPayment) {
     id: String(payment.id),
     receiptNumber: String(payment.receiptNumber ?? payment.id),
     studentId: String(payment.student.id),
-    studentName: `${payment.student.firstName} ${payment.student.lastName}`,
+    studentName: `${payment.student.lastName} ${payment.student.firstName}`,
     studentMatricule: payment.student.matricule,
     paymentTypeId: String(payment.paymentType.id),
     paymentTypeName: payment.paymentType.name,

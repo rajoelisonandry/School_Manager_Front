@@ -44,7 +44,13 @@ import { getStudents } from "../students/actions";
 import { getPaymentTypes } from "../payment-types/actions";
 import { getClasses } from "../classes/actions";
 import { getPaymentTypeRates } from "../payment-type-rates/actions";
-import { currentSchoolYear, schoolYearOptions, schoolYearStart, yearForMonth } from "@/lib/school-year";
+import {
+  currentSchoolYear,
+  schoolYearOptions,
+  schoolYearStart,
+  yearForMonth,
+  SCHOOL_MONTHS,
+} from "@/lib/school-year";
 
 interface Payment {
   id: string;
@@ -98,7 +104,6 @@ interface LineItem {
 const emptyLineItem: LineItem = { paymentTypeId: "", month: "", amountDue: 0, amountPaid: 0 };
 
 const emptyFormData = {
-  classId: "",
   studentId: "",
   schoolYear: currentSchoolYear(),
   paymentDate: new Date().toISOString().split("T")[0],
@@ -284,15 +289,18 @@ export default function PaymentsPage() {
     return type?.amount ?? 0;
   };
 
-  const studentsForForm = formData.classId
-    ? students.filter((s) => s.classId === formData.classId)
-    : students;
+  // La classe n'est plus sélectionnée séparément : elle est déduite de l'élève choisi.
+  const getClassIdForStudent = (studentId: string) =>
+    students.find((s) => s.id === studentId)?.classId ?? "";
 
-  const handleClassChange = (classId: string) => {
+  const getClassName = (classId: string) =>
+    classes.find((c) => c.id === classId)?.name ?? "Non assigné";
+
+  const handleStudentChange = (studentId: string) => {
+    const classId = getClassIdForStudent(studentId);
     setFormData((prev) => ({
       ...prev,
-      classId,
-      studentId: "",
+      studentId,
       items: prev.items.map((item) =>
         item.paymentTypeId
           ? {
@@ -306,24 +314,28 @@ export default function PaymentsPage() {
   };
 
   const handleSchoolYearChange = (schoolYear: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      schoolYear,
-      items: prev.items.map((item) =>
-        item.paymentTypeId
-          ? {
-              ...item,
-              amountDue: resolveAmount(prev.classId, item.paymentTypeId, schoolYearStart(schoolYear)),
-              amountPaid: resolveAmount(prev.classId, item.paymentTypeId, schoolYearStart(schoolYear)),
-            }
-          : item
-      ),
-    }));
+    setFormData((prev) => {
+      const classId = getClassIdForStudent(prev.studentId);
+      return {
+        ...prev,
+        schoolYear,
+        items: prev.items.map((item) =>
+          item.paymentTypeId
+            ? {
+                ...item,
+                amountDue: resolveAmount(classId, item.paymentTypeId, schoolYearStart(schoolYear)),
+                amountPaid: resolveAmount(classId, item.paymentTypeId, schoolYearStart(schoolYear)),
+              }
+            : item
+        ),
+      };
+    });
   };
 
   const handleItemTypeChange = (index: number, paymentTypeId: string) => {
     setFormData((prev) => {
-      const amount = resolveAmount(prev.classId, paymentTypeId, schoolYearStart(prev.schoolYear));
+      const classId = getClassIdForStudent(prev.studentId);
+      const amount = resolveAmount(classId, paymentTypeId, schoolYearStart(prev.schoolYear));
       return {
         ...prev,
         items: prev.items.map((item, i) =>
@@ -495,45 +507,26 @@ export default function PaymentsPage() {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-1.5">
-                    Classe
+                    Élève<span className="text-destructive">*</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        Filtre la liste des élèves ci-dessous et applique le tarif de cette classe
+                        La classe et son tarif sont déduits automatiquement de l&apos;élève choisi
                       </TooltipContent>
                     </Tooltip>
                   </label>
-                  <Select value={formData.classId} onValueChange={handleClassChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filtrer par classe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Élève<span className="text-destructive">*</span>
-                  </label>
                   <SearchableSelect
                     value={formData.studentId}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, studentId: value }))
-                    }
+                    onValueChange={handleStudentChange}
                     placeholder="Sélectionner un élève"
-                    searchPlaceholder="Matricule, nom ou prénom..."
-                    emptyMessage="Aucun élève dans cette classe"
-                    options={studentsForForm.map((student) => ({
+                    searchPlaceholder="Matricule, nom, prénom ou classe..."
+                    emptyMessage="Aucun élève trouvé"
+                    options={students.map((student) => ({
                       value: student.id,
-                      label: `${student.matricule} - ${student.firstName} ${student.lastName}`,
-                      keywords: `${student.matricule} ${student.firstName} ${student.lastName}`,
+                      label: `${student.matricule} - ${student.lastName} ${student.firstName} (${getClassName(student.classId)})`,
+                      keywords: `${student.matricule} ${student.firstName} ${student.lastName} ${getClassName(student.classId)}`,
                     }))}
                   />
                 </div>
@@ -546,7 +539,7 @@ export default function PaymentsPage() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-56">
                         Septembre à Décembre comptent pour la première année,
-                        Janvier à Juin pour la seconde
+                        Janvier à Août pour la seconde
                       </TooltipContent>
                     </Tooltip>
                   </label>
@@ -592,12 +585,9 @@ export default function PaymentsPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {paymentTypes.map((type) => {
-                              const amount = formData.classId
-                                ? resolveAmount(
-                                    formData.classId,
-                                    type.id,
-                                    schoolYearStart(formData.schoolYear)
-                                  )
+                              const classId = getClassIdForStudent(formData.studentId);
+                              const amount = classId
+                                ? resolveAmount(classId, type.id, schoolYearStart(formData.schoolYear))
                                 : type.amount;
                               return (
                                 <SelectItem key={type.id} value={type.id}>
@@ -607,13 +597,22 @@ export default function PaymentsPage() {
                             })}
                           </SelectContent>
                         </Select>
-                        <Input
+                        <Select
                           value={item.month}
-                          onChange={(e) => handleItemMonthChange(index, e.target.value)}
-                          placeholder="Mois (ex: Mai)"
-                          className="w-36"
+                          onValueChange={(value) => handleItemMonthChange(index, value)}
                           required
-                        />
+                        >
+                          <SelectTrigger className="w-36">
+                            <SelectValue placeholder="Mois" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SCHOOL_MONTHS.map((m) => (
+                              <SelectItem key={m.key} value={m.label}>
+                                {m.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         {formData.items.length > 1 && (
                           <Button
                             type="button"
@@ -720,7 +719,7 @@ export default function PaymentsPage() {
                   {(() => {
                     const student = students.find((s) => s.id === formData.studentId);
                     return student
-                      ? `${student.matricule} - ${student.firstName} ${student.lastName}`
+                      ? `${student.matricule} - ${student.lastName} ${student.firstName} (${getClassName(student.classId)})`
                       : "-";
                   })()}
                 </p>

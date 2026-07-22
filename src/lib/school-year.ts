@@ -9,6 +9,8 @@ export const SCHOOL_MONTHS = [
   { key: "avril", label: "Avril", short: "Avr.", monthIndex: 3, yearOffset: 1 },
   { key: "mai", label: "Mai", short: "Mai", monthIndex: 4, yearOffset: 1 },
   { key: "juin", label: "Juin", short: "Juin", monthIndex: 5, yearOffset: 1 },
+  { key: "juillet", label: "Juillet", short: "Juil.", monthIndex: 6, yearOffset: 1 },
+  { key: "aout", label: "Août", short: "Août", monthIndex: 7, yearOffset: 1 },
 ] as const;
 
 export function normalizeText(text: string) {

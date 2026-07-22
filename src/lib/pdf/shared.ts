@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import { currentSchoolYear } from "@/lib/school-year";
 
 export const PRIMARY: [number, number, number] = [21, 60, 94];
+export const ACCENT: [number, number, number] = [222, 142, 53];
 export const SCHOOL_ADDRESS = "Lot 077 G Bis Ambohibao Antehiroka";
 export const SCHOOL_PHONE = "+261 34 01 332 78";
 

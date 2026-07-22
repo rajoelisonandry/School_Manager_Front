@@ -145,7 +145,7 @@ export default function ClassStudentsPage({
                   <TableRow key={student.id}>
                     <TableCell className="font-medium">{student.matricule}</TableCell>
                     <TableCell className="font-medium">
-                      {student.firstName} {student.lastName}
+                      {student.lastName} {student.firstName}
                     </TableCell>
                     <TableCell>
                       {new Date(student.dateOfBirth).toLocaleDateString("fr-FR")}
