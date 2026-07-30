@@ -137,7 +137,7 @@ export function exportCertificatScolaritePdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.setTextColor(0, 0, 0);
-  doc.text("RAKOTOARIZAO Voahangy", signatureX + 30, stampY + stampH + 2, { align: "center" });
+  doc.text("Mme RAKOTOARIZAO Voahangy", signatureX + 30, stampY + stampH + 2, { align: "center" });
 
   doc.save(`certificat-scolarite-${slugify(`${student.lastName}-${student.firstName}`)}.pdf`);
 }

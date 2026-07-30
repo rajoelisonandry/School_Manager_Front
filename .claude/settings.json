@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -w \"\\\\nSTATUS:%{http_code}\\\\n\" -X POST http://localhost:3001/teachers -H \"Content-Type: application/json\" -d '{\"matricule\":\"BUGTEST1\",\"lastName\":\"Test\",\"firstName\":\"Bug\",\"gender\":\"M\",\"status\":\"active\",\"subjectIds\":[],\"email\":\"\",\"phones\":[\"\"]}')",
+      "Bash(npx ts-node *)",
+      "Bash(rm -f \"c:/Project/ABE/ABE_project_back/dist/test-dto-debug.js\" \"c:/Project/ABE/ABE_project_back/dist/test-dto-debug.d.ts\" \"c:/Project/ABE/ABE_project_back/dist/test-dto-debug.js.map\" *)",
+      "Bash(curl -s -o /dev/null -w \"emplois-du-temps: %{http_code}\\\\n\" http://localhost:3000/dashboard/emplois-du-temps)",
+      "Bash(curl -s -o /dev/null -w \"delete entry 413: %{http_code}\\\\n\" -X DELETE http://localhost:3001/timetable-entries/413)",
+      "Bash(curl -s -o /dev/null -w \"delete entry 414: %{http_code}\\\\n\" -X DELETE http://localhost:3001/timetable-entries/414)",
+      "Bash(curl -s -o /dev/null -w \"delete teacher: %{http_code}\\\\n\" -X DELETE http://localhost:3001/teachers/16)",
+      "Bash(curl -s -o /dev/null -w \"delete subject: %{http_code}\\\\n\" -X DELETE http://localhost:3001/subjects/15)"
+    ],
+    "additionalDirectories": [
+      "c:\\Project\\ABE\\ABE_project_back\\src",
+      "c:\\Project\\ABE\\ABE_project_back",
+      "c:\\Project\\ABE\\ABE_project_back\\dist",
+      "c:\\Project\\ABE\\ABE_project_back\\src\\teacher-availability"
+    ]
+  }
+}

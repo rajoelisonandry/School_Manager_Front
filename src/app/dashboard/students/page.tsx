@@ -483,22 +483,22 @@ export default function StudentsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Prénom<span className="text-destructive">*</span>
+                      Nom<span className="text-destructive">*</span>
                     </label>
                     <Input
-                      name="firstName"
-                      value={formData.firstName}
+                      name="lastName"
+                      value={formData.lastName}
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Nom<span className="text-destructive">*</span>
+                      Prénom<span className="text-destructive">*</span>
                     </label>
                     <Input
-                      name="lastName"
-                      value={formData.lastName}
+                      name="firstName"
+                      value={formData.firstName}
                       onChange={handleInputChange}
                       required
                     />
