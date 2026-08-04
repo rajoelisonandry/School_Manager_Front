@@ -371,13 +371,16 @@ async function drawCoverPage(
 
   // Photo d'identité : ni fond ni contour, juste la photo (coins arrondis par découpe)
   // ou, à défaut, un léger texte indicatif.
-  const photoBlockH = contentH * 0.25;
+  const baseBlockH = contentH * 0.25;
   const photoTopPad = 4;
-  const maxPhotoH = photoBlockH - photoTopPad * 2;
-  const photoH = Math.min(maxPhotoH, contentW * 0.5);
+  const baseMaxPhotoH = baseBlockH - photoTopPad * 2;
+  // Photo agrandie de 30% par rapport à la taille d'origine ; le bloc qui lui est
+  // réservé grandit d'autant pour ne pas empiéter sur les sections voisines.
+  const photoH = Math.min(baseMaxPhotoH, contentW * 0.5) * 1.3;
   const photoW = photoH * 0.78;
   const photoX = centerContentX - photoW / 2;
-  const photoY = cursorY + photoTopPad + (maxPhotoH - photoH) / 2;
+  const photoY = cursorY + photoTopPad;
+  const photoBlockH = photoH + photoTopPad * 2;
 
   const photo = student.identityPhotoUrl ? await loadPhoto(student.identityPhotoUrl) : null;
 
@@ -440,7 +443,7 @@ async function drawCoverPage(
 
   // Année scolaire, ancrée tout en bas (au lieu d'être centrée dans l'espace restant),
   // avec l'espace libéré au-dessus pour bien la détacher de la fiche.
-  const yearValueBaselineY = contentBottom - 6;
+  const yearValueBaselineY = contentBottom - 2;
   const yearLabelBaselineY = yearValueBaselineY - 10;
   const yearLineY = yearValueBaselineY - 2;
   doc.setFont(POPPINS, "semibold");

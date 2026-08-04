@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,6 +99,14 @@ interface LineItem {
   month: string;
   amountDue: number;
   amountPaid: number;
+}
+
+interface DebtItem {
+  paymentTypeId: string;
+  paymentTypeName: string;
+  month: string;
+  year: number;
+  reste: number;
 }
 
 const emptyLineItem: LineItem = { paymentTypeId: "", month: "", amountDue: 0, amountPaid: 0 };
@@ -363,6 +371,68 @@ export default function PaymentsPage() {
     }));
   };
 
+  // Dettes en cours de l'élève sélectionné, pour l'année scolaire choisie : lignes de
+  // paiement où la somme payée n'atteint pas le montant dû le plus élevé enregistré.
+  const outstandingDebts = useMemo<DebtItem[]>(() => {
+    if (!formData.studentId) return [];
+    const startYear = schoolYearStart(formData.schoolYear);
+    const endYear = startYear + 1;
+
+    const groups = new Map<string, Payment[]>();
+    for (const payment of payments) {
+      if (payment.studentId !== formData.studentId) continue;
+      if (payment.year !== startYear && payment.year !== endYear) continue;
+      const key = `${payment.paymentTypeId}|${payment.month}|${payment.year}`;
+      const list = groups.get(key) ?? [];
+      list.push(payment);
+      groups.set(key, list);
+    }
+
+    const debts: DebtItem[] = [];
+    for (const group of groups.values()) {
+      const amountDue = Math.max(...group.map((p) => p.amountDue));
+      const amountPaid = group.reduce((sum, p) => sum + p.amountPaid, 0);
+      const reste = amountDue - amountPaid;
+      if (reste <= 0) continue;
+      const first = group[0];
+      debts.push({
+        paymentTypeId: first.paymentTypeId,
+        paymentTypeName: first.paymentTypeName,
+        month: first.month,
+        year: first.year,
+        reste,
+      });
+    }
+
+    return debts.filter(
+      (debt) =>
+        !formData.items.some(
+          (item) => item.paymentTypeId === debt.paymentTypeId && item.month === debt.month
+        )
+    );
+  }, [payments, formData.studentId, formData.schoolYear, formData.items]);
+
+  const handleSettleDebt = (debt: DebtItem) => {
+    setFormData((prev) => {
+      const newItem: LineItem = {
+        paymentTypeId: debt.paymentTypeId,
+        month: debt.month,
+        amountDue: debt.reste,
+        amountPaid: debt.reste,
+      };
+      const isDefaultEmpty =
+        prev.items.length === 1 &&
+        prev.items[0].paymentTypeId === "" &&
+        prev.items[0].month === "" &&
+        prev.items[0].amountDue === 0 &&
+        prev.items[0].amountPaid === 0;
+      return {
+        ...prev,
+        items: isDefaultEmpty ? [newItem] : [...prev.items, newItem],
+      };
+    });
+  };
+
   const addItem = () => {
     setFormData((prev) => ({ ...prev, items: [...prev.items, { ...emptyLineItem }] }));
   };
@@ -556,6 +626,44 @@ export default function PaymentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {outstandingDebts.length > 0 && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40 p-3 space-y-2">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4" />
+                      Dettes en cours
+                    </p>
+                    <div className="space-y-1.5">
+                      {outstandingDebts.map((debt) => (
+                        <div
+                          key={`${debt.paymentTypeId}-${debt.month}-${debt.year}`}
+                          className="flex items-center justify-between gap-2 flex-wrap text-sm"
+                        >
+                          <div>
+                            <span className="font-medium">{debt.paymentTypeName}</span>
+                            <span className="text-muted-foreground capitalize">
+                              {" "}
+                              — {debt.month} {debt.year}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-amber-700 dark:text-amber-400 font-medium">
+                              Reste {formatAriary(debt.reste)}
+                            </span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSettleDebt(debt)}
+                            >
+                              Régler
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-3 border-t border-border pt-3">
                   <label className="text-sm font-medium flex items-center gap-1.5">

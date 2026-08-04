@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { loginUser } from "@/app/dashboard/users/actions";
+import { loginAction, logoutAction, getCurrentUser } from "@/lib/auth/session";
 
 interface User {
   id: string;
@@ -16,28 +16,28 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
+    // La source de vérité est le JWT (cookie httpOnly), revérifié auprès du
+    // backend à chaque chargement — jamais un état client qu'on se contenterait
+    // de croire sur parole.
+    getCurrentUser()
+      .then(setUser)
+      .finally(() => setIsLoading(false));
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    const loggedInUser = await loginUser(username, password);
+    const loggedInUser = await loginAction(username, password);
     if (loggedInUser) {
       setUser(loggedInUser);
-      setIsAuthenticated(true);
-      localStorage.setItem("user", JSON.stringify(loggedInUser));
       return true;
     }
     return false;
@@ -45,12 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem("user");
+    logoutAction();
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, isAuthenticated: !!user, isLoading }}
+    >
       {children}
     </AuthContext.Provider>
   );

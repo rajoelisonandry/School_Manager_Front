@@ -1,4 +1,7 @@
+import { cookies } from 'next/headers';
+
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? 'http://localhost:3001';
+export const AUTH_COOKIE_NAME = 'token';
 
 export class BackendError extends Error {
   constructor(
@@ -9,6 +12,12 @@ export class BackendError extends Error {
   }
 }
 
+async function authHeaders(): Promise<Record<string, string>> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function backendFetch<T>(
   path: string,
   options?: RequestInit,
@@ -17,6 +26,7 @@ export async function backendFetch<T>(
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(await authHeaders()),
       ...options?.headers,
     },
     cache: 'no-store',
@@ -43,6 +53,9 @@ export async function backendUpload(
 ): Promise<{ url: string }> {
   const res = await fetch(`${BACKEND_API_URL}${path}`, {
     method: 'POST',
+    headers: {
+      ...(await authHeaders()),
+    },
     body: formData,
     cache: 'no-store',
   });

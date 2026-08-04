@@ -62,15 +62,3 @@ export async function deleteUser(id: string) {
   })
   revalidatePath('/dashboard/users')
 }
-
-export async function loginUser(username: string, password: string) {
-  try {
-    const user = await backendFetch<BackendUser>('/users/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    })
-    return toFrontUser(user)
-  } catch {
-    return null
-  }
-}

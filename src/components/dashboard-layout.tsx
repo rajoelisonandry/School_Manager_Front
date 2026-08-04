@@ -160,19 +160,19 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout, user, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (isLoading || !isAuthenticated) {
     return null;
   }
 

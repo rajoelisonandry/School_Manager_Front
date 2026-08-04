@@ -44,6 +44,7 @@ interface Student {
   firstName: string;
   lastName: string;
   classId: string;
+  createdAt: string;
 }
 
 interface ClassOption {
@@ -63,7 +64,55 @@ interface Payment {
   paymentTypeId: string;
   month: string;
   year: number;
+  amountDue: number;
+  amountPaid: number;
   paymentDate: string;
+}
+
+interface PaymentDetail {
+  date: string;
+  amount: number;
+}
+
+interface AggregatedStatus {
+  amountDue: number;
+  amountPaid: number;
+  reste: number;
+  lastPaymentDate: string;
+  details: PaymentDetail[];
+}
+
+function aggregate(matches: Payment[]): AggregatedStatus | undefined {
+  if (matches.length === 0) return undefined;
+  const amountDue = Math.max(...matches.map((m) => m.amountDue));
+  const amountPaid = matches.reduce((sum, m) => sum + m.amountPaid, 0);
+  const lastPaymentDate = matches.reduce(
+    (latest, m) => (m.paymentDate > latest ? m.paymentDate : latest),
+    matches[0].paymentDate
+  );
+  const details = [...matches]
+    .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate))
+    .map((m) => ({ date: m.paymentDate, amount: m.amountPaid }));
+  return {
+    amountDue,
+    amountPaid,
+    reste: Math.max(0, amountDue - amountPaid),
+    lastPaymentDate,
+    details,
+  };
+}
+
+function formatAriary(amount: number) {
+  return `${amount.toLocaleString("fr-FR")} Ar`;
+}
+
+function formatCompact(amount: number) {
+  if (amount >= 1000) {
+    const thousands = amount / 1000;
+    const rounded = Number.isInteger(thousands) ? thousands : thousands.toFixed(1);
+    return `${rounded}k`;
+  }
+  return `${amount}`;
 }
 
 function isMonthDue(monthIndex: number, year: number): boolean {
@@ -128,7 +177,7 @@ export default function PaymentTrackingPage() {
     () =>
       students
         .filter((s) => s.classId === classId)
-        .sort((a, b) => a.lastName.localeCompare(b.lastName)),
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [students, classId]
   );
 
@@ -142,24 +191,72 @@ export default function PaymentTrackingPage() {
     return map;
   }, [payments]);
 
-  const findTypePayment = (studentId: string, typeId: string) => {
+  const findTypeStatus = (studentId: string, typeId: string) => {
     const list = paymentsByStudent.get(studentId) ?? [];
     const matches = list.filter(
       (p) => p.paymentTypeId === typeId && (p.year === startYear || p.year === endYear)
     );
-    if (matches.length === 0) return undefined;
-    return matches.reduce((latest, p) => (p.paymentDate > latest.paymentDate ? p : latest));
+    return aggregate(matches);
   };
 
-  const findEcolagePayment = (
+  const findEcolageStatus = (
     studentId: string,
     typeId: string,
     monthKey: string,
     year: number
   ) => {
     const list = paymentsByStudent.get(studentId) ?? [];
-    return list.find(
+    const matches = list.filter(
       (p) => p.paymentTypeId === typeId && p.year === year && normalizeText(p.month) === monthKey
+    );
+    return aggregate(matches);
+  };
+
+  const renderStatusCell = (status: AggregatedStatus | undefined, due: boolean) => {
+    if (!status) {
+      return due ? <span className="text-red-500 font-bold">—</span> : "";
+    }
+
+    const isPartial = status.reste > 0;
+    const hasInstallments = status.details.length > 1;
+
+    // Un seul versement qui couvre tout le montant dû : pas besoin de détail.
+    if (!isPartial && !hasInstallments) {
+      return (
+        <span className="text-green-600 dark:text-green-400">
+          {formatShortDate(status.lastPaymentDate)}
+        </span>
+      );
+    }
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {isPartial ? (
+            <span className="text-amber-600 dark:text-amber-400 font-semibold cursor-help">
+              {formatCompact(status.reste)}
+            </span>
+          ) : (
+            <span className="text-green-600 dark:text-green-400 cursor-help underline decoration-dotted">
+              {formatShortDate(status.lastPaymentDate)}
+            </span>
+          )}
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="space-y-0.5">
+            {status.details.map((detail, i) => (
+              <div key={i}>
+                {formatShortDate(detail.date)} : {formatAriary(detail.amount)}
+              </div>
+            ))}
+            <div className="mt-1 border-t border-border/50 pt-1 font-semibold">
+              {isPartial
+                ? `Dû ${formatAriary(status.amountDue)} — Reste ${formatAriary(status.reste)}`
+                : `Payé intégralement — ${formatAriary(status.amountDue)}`}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
@@ -235,6 +332,10 @@ export default function PaymentTrackingPage() {
             Payé (date)
           </span>
           <span className="flex items-center gap-1.5">
+            <span className="text-amber-600 dark:text-amber-400 font-bold">12k</span>
+            Partiel (reste à payer)
+          </span>
+          <span className="flex items-center gap-1.5">
             <span className="text-red-500 font-bold">—</span>
             Dû, non payé
           </span>
@@ -297,19 +398,11 @@ export default function PaymentTrackingPage() {
                     </TableCell>
 
                     {otherTypes.map((type) => {
-                      const payment = findTypePayment(student.id, type.id);
+                      const status = findTypeStatus(student.id, type.id);
                       const due = isSchoolYearStarted(startYear);
                       return (
                         <TableCell key={type.id} className="text-center text-xs">
-                          {payment ? (
-                            <span className="text-green-600 dark:text-green-400">
-                              {formatShortDate(payment.paymentDate)}
-                            </span>
-                          ) : due ? (
-                            <span className="text-red-500 font-bold">—</span>
-                          ) : (
-                            ""
-                          )}
+                          {renderStatusCell(status, due)}
                         </TableCell>
                       );
                     })}
@@ -317,7 +410,7 @@ export default function PaymentTrackingPage() {
                     {ecolageType &&
                       SCHOOL_MONTHS.map((month) => {
                         const year = month.yearOffset === 0 ? startYear : endYear;
-                        const payment = findEcolagePayment(
+                        const status = findEcolageStatus(
                           student.id,
                           ecolageType.id,
                           month.key,
@@ -326,15 +419,7 @@ export default function PaymentTrackingPage() {
                         const due = isMonthDue(month.monthIndex, year);
                         return (
                           <TableCell key={month.key} className="text-center text-xs">
-                            {payment ? (
-                              <span className="text-green-600 dark:text-green-400">
-                                {formatShortDate(payment.paymentDate)}
-                              </span>
-                            ) : due ? (
-                              <span className="text-red-500 font-bold">—</span>
-                            ) : (
-                              ""
-                            )}
+                            {renderStatusCell(status, due)}
                           </TableCell>
                         );
                       })}
