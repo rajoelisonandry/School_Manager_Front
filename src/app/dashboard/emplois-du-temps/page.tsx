@@ -43,7 +43,9 @@ import {
   Clock,
   AlertTriangle,
   Loader2,
+  FileDown,
 } from "lucide-react";
+import { exportTimetablePdf, exportTeacherTimetablePdf } from "@/lib/pdf/timetable-pdf";
 import {
   getTimetableEntries,
   createTimetableEntry,
@@ -110,6 +112,8 @@ const HOUR_ROWS = [
 ];
 
 const TIMETABLE_LEVELS = ["collège", "lycée"];
+const ALL_TEACHERS = "all";
+const ALL_CLASSES = "all";
 
 const emptyFormData: TimetableEntryInput = {
   classId: "",
@@ -168,6 +172,11 @@ export default function EmploisDuTempsPage() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState<GenerateResult | null>(null);
+
+  const [isTeacherPdfDialogOpen, setIsTeacherPdfDialogOpen] = useState(false);
+  const [teacherPdfId, setTeacherPdfId] = useState(ALL_TEACHERS);
+  const [isClassPdfDialogOpen, setIsClassPdfDialogOpen] = useState(false);
+  const [classPdfId, setClassPdfId] = useState(ALL_CLASSES);
 
   const timetableClasses = classes.filter((c) => TIMETABLE_LEVELS.includes(c.level));
 
@@ -362,6 +371,26 @@ export default function EmploisDuTempsPage() {
     loadData();
   };
 
+  const handleExportPdf = () => {
+    const selected =
+      classPdfId === ALL_CLASSES
+        ? timetableClasses
+        : timetableClasses.filter((c) => c.id === classPdfId);
+    exportTimetablePdf(selected, entries);
+    setIsClassPdfDialogOpen(false);
+  };
+
+  const handleExportTeacherPdf = () => {
+    const selected =
+      teacherPdfId === ALL_TEACHERS ? teachers : teachers.filter((t) => t.id === teacherPdfId);
+    const teacherOptions = selected.map((t) => ({
+      id: t.id,
+      name: `${t.lastName} ${t.firstName}`,
+    }));
+    exportTeacherTimetablePdf(teacherOptions, entries, classes);
+    setIsTeacherPdfDialogOpen(false);
+  };
+
   if (isLoading) {
     return (
       <PageListSkeleton
@@ -406,6 +435,91 @@ export default function EmploisDuTempsPage() {
               disponibilités des professeurs. Remplace les cours existants
             </TooltipContent>
           </Tooltip>
+          <Dialog open={isClassPdfDialogOpen} onOpenChange={setIsClassPdfDialogOpen}>
+            <DialogTrigger asChild>
+              <span>
+                <Button
+                  variant="outline"
+                  disabled={timetableClasses.length === 0}
+                  className="gap-2"
+                >
+                  <FileDown className="h-4 w-4" />
+                  Exporter PDF
+                </Button>
+              </span>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Exporter l&apos;emploi du temps</DialogTitle>
+                <DialogDescription>
+                  Choisissez une classe, ou exportez-les toutes (un tableau par classe,
+                  récréations et pause déjeuner incluses, sans le nom des professeurs).
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-2">
+                <label className="text-sm font-medium">Classe</label>
+                <Select value={classPdfId} onValueChange={setClassPdfId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_CLASSES}>Toutes les classes</SelectItem>
+                    {timetableClasses.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleExportPdf} className="gap-2">
+                  <FileDown className="h-4 w-4" />
+                  Générer le PDF
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isTeacherPdfDialogOpen} onOpenChange={setIsTeacherPdfDialogOpen}>
+            <DialogTrigger asChild>
+              <span>
+                <Button variant="outline" disabled={teachers.length === 0} className="gap-2">
+                  <FileDown className="h-4 w-4" />
+                  Exporter PDF (Professeurs)
+                </Button>
+              </span>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Exporter l&apos;emploi du temps des professeurs</DialogTitle>
+                <DialogDescription>
+                  Choisissez un professeur, ou exportez-les tous (un tableau par professeur).
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-2">
+                <label className="text-sm font-medium">Professeur</label>
+                <Select value={teacherPdfId} onValueChange={setTeacherPdfId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_TEACHERS}>Tous les professeurs</SelectItem>
+                    {teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.lastName} {teacher.firstName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleExportTeacherPdf} className="gap-2">
+                  <FileDown className="h-4 w-4" />
+                  Générer le PDF
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <span>

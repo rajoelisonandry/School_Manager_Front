@@ -10,7 +10,8 @@
       "Bash(curl -s -o /dev/null -w \"delete teacher: %{http_code}\\\\n\" -X DELETE http://localhost:3001/teachers/16)",
       "Bash(curl -s -o /dev/null -w \"delete subject: %{http_code}\\\\n\" -X DELETE http://localhost:3001/subjects/15)",
       "Bash(curl -s -o /dev/null -w \"login page: %{http_code}\\\\n\" http://localhost:3000/login)",
-      "Bash(curl -s -o /dev/null -w \"admin panel: %{http_code}\\\\n\" http://localhost:3001/admin/login)"
+      "Bash(curl -s -o /dev/null -w \"admin panel: %{http_code}\\\\n\" http://localhost:3001/admin/login)",
+      "Bash(gradle tasks *)"
     ],
     "additionalDirectories": [
       "c:\\Project\\ABE\\ABE_project_back\\src",
@@ -19,7 +20,8 @@
       "c:\\Project\\ABE\\ABE_project_back\\src\\teacher-availability",
       "c:\\Project\\ABE\\ABE_project_back\\src\\auth",
       "c:\\Project\\ABE\\ABE_project_back\\src\\user",
-      "c:\\Project\\ABE\\ABE_project_back\\src\\admin\\auth"
+      "c:\\Project\\ABE\\ABE_project_back\\src\\admin\\auth",
+      "c:\\Project\\ABE\\ABE_project_mobile"
     ]
   }
 }
