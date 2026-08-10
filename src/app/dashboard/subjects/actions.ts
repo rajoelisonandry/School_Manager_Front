@@ -6,27 +6,48 @@ import { revalidatePath } from 'next/cache'
 interface BackendSubject {
   id: number
   name: string
-  classes: { id: number }[]
+  classCoefficients: { id: number; coefficient: number; schoolClass: { id: number } }[]
+}
+
+export interface ClassCoefficient {
+  classId: string
+  coefficient: number
 }
 
 export interface SubjectInput {
   name: string
-  classIds: string[]
+  // Coefficient propre à chaque classe où la matière est enseignée (une même
+  // matière peut peser différemment selon la classe).
+  classCoefficients: ClassCoefficient[]
 }
 
 function toFrontSubject(subject: BackendSubject) {
+  const classCoefficients = (subject.classCoefficients ?? []).map((cc) => ({
+    classId: String(cc.schoolClass.id),
+    coefficient: cc.coefficient,
+  }))
   return {
     id: String(subject.id),
     name: subject.name,
-    classIds: (subject.classes ?? []).map((c) => String(c.id)),
+    classCoefficients,
+    // Dérivé pour les usages qui n'ont besoin que de la liste des classes (emploi
+    // du temps, saisie des notes), sans se soucier du coefficient.
+    classIds: classCoefficients.map((cc) => cc.classId),
   }
 }
 
 function toBackendPayload(data: Partial<SubjectInput>) {
-  const { classIds, ...rest } = data
+  const { classCoefficients, ...rest } = data
   return {
     ...rest,
-    ...(classIds !== undefined ? { classIds: classIds.map(Number) } : {}),
+    ...(classCoefficients !== undefined
+      ? {
+          classCoefficients: classCoefficients.map((cc) => ({
+            classId: Number(cc.classId),
+            coefficient: cc.coefficient,
+          })),
+        }
+      : {}),
   }
 }
 

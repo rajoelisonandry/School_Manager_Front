@@ -11,7 +11,9 @@
       "Bash(curl -s -o /dev/null -w \"delete subject: %{http_code}\\\\n\" -X DELETE http://localhost:3001/subjects/15)",
       "Bash(curl -s -o /dev/null -w \"login page: %{http_code}\\\\n\" http://localhost:3000/login)",
       "Bash(curl -s -o /dev/null -w \"admin panel: %{http_code}\\\\n\" http://localhost:3001/admin/login)",
-      "Bash(gradle tasks *)"
+      "Bash(gradle tasks *)",
+      "Bash(node -e \"const m = require\\('lucide-react'\\); console.log\\(['ClipboardList','NotebookPen','Save','GraduationCap','ListChecks','Award','Trophy'].map\\(k => k + ': ' + \\(k in m\\)\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(npx next *)"
     ],
     "additionalDirectories": [
       "c:\\Project\\ABE\\ABE_project_back\\src",
@@ -21,7 +23,10 @@
       "c:\\Project\\ABE\\ABE_project_back\\src\\auth",
       "c:\\Project\\ABE\\ABE_project_back\\src\\user",
       "c:\\Project\\ABE\\ABE_project_back\\src\\admin\\auth",
-      "c:\\Project\\ABE\\ABE_project_mobile"
+      "c:\\Project\\ABE\\ABE_project_mobile",
+      "c:\\Project\\ABE\\ABE_project_back\\src\\common",
+      "c:\\Project\\ABE\\ABE_project_back\\src\\grade\\dto",
+      "c:\\Project\\ABE\\ABE_project_back\\src\\grade"
     ]
   }
 }

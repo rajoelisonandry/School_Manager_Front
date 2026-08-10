@@ -20,6 +20,7 @@ import {
   Contact,
   CalendarClock,
   BookMarked,
+  ClipboardList,
   LogOut,
   Menu,
   X,
@@ -74,6 +75,12 @@ const navigationGroups: NavGroup[] = [
         href: "/dashboard/classes",
         icon: GraduationCap,
         description: "Gérer les classes et leurs effectifs",
+      },
+      {
+        name: "Notes & Bulletins",
+        href: "/dashboard/notes",
+        icon: ClipboardList,
+        description: "Saisir les notes de DS et d'examens, et exporter les bulletins en PDF",
       },
       {
         name: "Carnet de Correspondance",

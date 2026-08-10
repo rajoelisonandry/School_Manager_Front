@@ -28,7 +28,13 @@ import {
 } from "@/components/ui/tooltip";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Plus, Pencil, Trash2, Search, BookMarked, Info } from "lucide-react";
-import { getSubjects, createSubject, updateSubject, deleteSubject } from "./actions";
+import {
+  getSubjects,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+  type ClassCoefficient,
+} from "./actions";
 import { getClasses } from "../classes/actions";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
@@ -36,6 +42,7 @@ import { PageListSkeleton } from "@/components/loading-skeletons";
 interface Subject {
   id: string;
   name: string;
+  classCoefficients: ClassCoefficient[];
   classIds: string[];
 }
 
@@ -45,9 +52,14 @@ interface ClassOption {
   level: string;
 }
 
-const emptyFormData: Partial<Subject> = {
+interface SubjectFormData {
+  name: string;
+  classCoefficients: ClassCoefficient[];
+}
+
+const emptyFormData: SubjectFormData = {
   name: "",
-  classIds: [],
+  classCoefficients: [],
 };
 
 export default function SubjectsPage() {
@@ -56,7 +68,7 @@ export default function SubjectsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
-  const [formData, setFormData] = useState<Partial<Subject>>(emptyFormData);
+  const [formData, setFormData] = useState<SubjectFormData>(emptyFormData);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -71,9 +83,16 @@ export default function SubjectsPage() {
     setIsLoading(false);
   };
 
-  const getClassNames = (classIds: string[]) =>
-    classIds
-      .map((id) => classes.find((c) => c.id === id)?.name)
+  const getClassName = (classId: string) => classes.find((c) => c.id === classId)?.name;
+
+  // Ex: "Terminale A (coef. 3), 6e A (coef. 2)" — un même coup d'œil sur les classes
+  // concernées et le poids de la matière dans chacune.
+  const getClassCoefficientSummary = (subject: Subject) =>
+    subject.classCoefficients
+      .map((cc) => {
+        const name = getClassName(cc.classId);
+        return name ? `${name} (coef. ${cc.coefficient})` : null;
+      })
       .filter(Boolean)
       .join(", ");
 
@@ -84,8 +103,8 @@ export default function SubjectsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const dataToSave = {
-      name: formData.name ?? "",
-      classIds: formData.classIds ?? [],
+      name: formData.name,
+      classCoefficients: formData.classCoefficients,
     };
 
     if (editingSubject) {
@@ -101,7 +120,10 @@ export default function SubjectsPage() {
 
   const handleEdit = (subject: Subject) => {
     setEditingSubject(subject);
-    setFormData({ name: subject.name, classIds: subject.classIds });
+    setFormData({
+      name: subject.name,
+      classCoefficients: subject.classCoefficients,
+    });
     setIsDialogOpen(true);
   };
 
@@ -115,6 +137,32 @@ export default function SubjectsPage() {
   const resetForm = () => {
     setEditingSubject(null);
     setFormData(emptyFormData);
+  };
+
+  // Garde le coefficient déjà saisi pour les classes qui restent cochées, et
+  // démarre à 1 pour toute classe nouvellement ajoutée.
+  const handleClassSelectionChange = (values: string[]) => {
+    setFormData((prev) => {
+      const coefficientByClassId = new Map(
+        prev.classCoefficients.map((cc) => [cc.classId, cc.coefficient])
+      );
+      return {
+        ...prev,
+        classCoefficients: values.map((classId) => ({
+          classId,
+          coefficient: coefficientByClassId.get(classId) ?? 1,
+        })),
+      };
+    });
+  };
+
+  const handleCoefficientChange = (classId: string, coefficient: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      classCoefficients: prev.classCoefficients.map((cc) =>
+        cc.classId === classId ? { ...cc, coefficient } : cc
+      ),
+    }));
   };
 
   const classOptions = classes.map((cls) => ({
@@ -140,7 +188,7 @@ export default function SubjectsPage() {
         <PageHeader
           icon={BookMarked}
           title="Gestion des Matières"
-          subtitle="Définir les matières et les classes où elles sont enseignées"
+          subtitle="Définir les matières, les classes concernées et leur coefficient par classe"
         />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -156,7 +204,7 @@ export default function SubjectsPage() {
               </DialogTitle>
               <DialogDescription>
                 {editingSubject
-                  ? "Modifier le nom ou les classes concernées"
+                  ? "Modifier le nom, les classes concernées ou leur coefficient"
                   : "Ajouter une nouvelle matière au système"}
               </DialogDescription>
             </DialogHeader>
@@ -189,16 +237,50 @@ export default function SubjectsPage() {
                     </Tooltip>
                   </label>
                   <MultiSelect
-                    values={formData.classIds ?? []}
-                    onValuesChange={(values) =>
-                      setFormData((prev) => ({ ...prev, classIds: values }))
-                    }
+                    values={formData.classCoefficients.map((cc) => cc.classId)}
+                    onValuesChange={handleClassSelectionChange}
                     options={classOptions}
                     placeholder="Sélectionner les classes"
                     searchPlaceholder="Rechercher une classe..."
                     emptyMessage="Aucune classe trouvée"
                   />
                 </div>
+                {formData.classCoefficients.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      Coefficient par classe
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-56">
+                          Pondère cette matière dans la moyenne générale du bulletin : elle
+                          peut peser différemment selon la classe
+                        </TooltipContent>
+                      </Tooltip>
+                    </label>
+                    <div className="space-y-1.5 rounded-md border border-border p-2">
+                      {formData.classCoefficients.map((cc) => (
+                        <div key={cc.classId} className="flex items-center justify-between gap-3">
+                          <span className="text-sm truncate">
+                            {getClassName(cc.classId) ?? cc.classId}
+                          </span>
+                          <Input
+                            type="number"
+                            min={1}
+                            step={1}
+                            className="w-20 shrink-0"
+                            value={cc.coefficient}
+                            onChange={(e) =>
+                              handleCoefficientChange(cc.classId, Number(e.target.value) || 1)
+                            }
+                            required
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 <span className="text-destructive">*</span> Champs obligatoires
@@ -231,7 +313,7 @@ export default function SubjectsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Matière</TableHead>
-                <TableHead>Classes</TableHead>
+                <TableHead>Classes (coefficient)</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -239,7 +321,7 @@ export default function SubjectsPage() {
               {filteredSubjects.map((subject) => (
                 <TableRow key={subject.id}>
                   <TableCell className="font-medium">{subject.name}</TableCell>
-                  <TableCell>{getClassNames(subject.classIds) || "-"}</TableCell>
+                  <TableCell>{getClassCoefficientSummary(subject) || "-"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Tooltip>
