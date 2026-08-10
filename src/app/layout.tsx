@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
@@ -33,6 +33,25 @@ const googleSansItalic = localFont({
 export const metadata: Metadata = {
   title: "Au Bel Enfant - Système de Gestion d'École",
   description: "Syst ème de gestion scolaire complet",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    // Permet "Ajouter à l'écran d'accueil" sur iPhone : lancement en plein
+    // écran (sans barre Safari), avec l'icône ci-dessus au lieu du favicon.
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Au Bel Enfant",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#005993",
 };
 
 export default function RootLayout({

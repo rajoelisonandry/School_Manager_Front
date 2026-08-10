@@ -44,6 +44,7 @@ import {
   AlertTriangle,
   Loader2,
   FileDown,
+  Users,
 } from "lucide-react";
 import { exportTimetablePdf, exportTeacherTimetablePdf } from "@/lib/pdf/timetable-pdf";
 import {
@@ -74,6 +75,9 @@ interface TimetableEntry {
   startTime: string;
   endTime: string;
   room: string;
+  // Renseigné quand ce cours a été créé pour plusieurs classes réunies en même
+  // temps (cf. case à cocher "Cours commun avec une autre classe").
+  groupId: string | null;
 }
 
 interface ClassOption {
@@ -165,6 +169,9 @@ export default function EmploisDuTempsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimetableEntry | null>(null);
   const [formData, setFormData] = useState<TimetableEntryInput>(emptyFormData);
+  // Ajout manuel groupé : crée le même cours pour une 2e classe (classes réunies).
+  const [isGroupedEntry, setIsGroupedEntry] = useState(false);
+  const [secondClassId, setSecondClassId] = useState("");
 
   const [availabilityTeacherId, setAvailabilityTeacherId] = useState("");
   const [availabilityForm, setAvailabilityForm] = useState<AvailabilityForm>(emptyAvailabilityForm);
@@ -209,11 +216,18 @@ export default function EmploisDuTempsPage() {
 
   // Ne proposer que les matières définies pour la classe sélectionnée : ça simplifie
   // la saisie et évite d'assigner une matière qui n'existe pas dans cette classe.
-  const subjectsForClass = subjects.filter((s) => s.classIds.includes(selectedClassId));
+  // En mode groupé, la matière doit aussi être définie pour la 2e classe choisie.
+  const subjectsForClass = subjects.filter(
+    (s) =>
+      s.classIds.includes(selectedClassId) &&
+      (!isGroupedEntry || (secondClassId && s.classIds.includes(secondClassId)))
+  );
 
   const resetForm = () => {
     setEditingEntry(null);
     setFormData({ ...emptyFormData, classId: selectedClassId });
+    setIsGroupedEntry(false);
+    setSecondClassId("");
   };
 
   const handleOpenCreate = () => {
@@ -231,6 +245,8 @@ export default function EmploisDuTempsPage() {
     setSelectedClassId(classId);
     setEditingEntry(null);
     setFormData({ ...emptyFormData, classId, dayOfWeek, startTime, endTime });
+    setIsGroupedEntry(false);
+    setSecondClassId("");
     setIsDialogOpen(true);
   };
 
@@ -245,8 +261,18 @@ export default function EmploisDuTempsPage() {
       endTime: entry.endTime,
       room: entry.room,
     });
+    setIsGroupedEntry(false);
+    setSecondClassId("");
     setIsDialogOpen(true);
   };
+
+  // Classes qui partagent le même cours (groupId) qu'une entrée donnée.
+  const groupPeers = (entry: TimetableEntry) =>
+    entry.groupId
+      ? entries.filter((e) => e.groupId === entry.groupId && e.id !== entry.id)
+      : [];
+
+  const getClassName = (classId: string) => classes.find((c) => c.id === classId)?.name ?? "-";
 
   const handleDelete = async (id: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce cours de l'emploi du temps ?")) {
@@ -257,7 +283,19 @@ export default function EmploisDuTempsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dataToSave = { ...formData, classId: selectedClassId };
+
+    if (isGroupedEntry && !secondClassId) {
+      alert("Sélectionnez la 2e classe pour ce cours commun, ou décochez l'option.");
+      return;
+    }
+
+    const dataToSave: TimetableEntryInput = {
+      ...formData,
+      classId: selectedClassId,
+      ...(isGroupedEntry && secondClassId
+        ? { classIds: [selectedClassId, secondClassId] }
+        : {}),
+    };
 
     try {
       if (editingEntry) {
@@ -304,7 +342,9 @@ export default function EmploisDuTempsPage() {
         other.teacherId === entry.teacherId &&
         other.dayOfWeek === entry.dayOfWeek &&
         other.startTime < entry.endTime &&
-        other.endTime > entry.startTime
+        other.endTime > entry.startTime &&
+        // Un cours commun à plusieurs classes (même groupId) n'est pas un conflit.
+        !(entry.groupId && other.groupId === entry.groupId)
     );
   };
 
@@ -534,10 +574,69 @@ export default function EmploisDuTempsPage() {
                 <DialogTitle>{editingEntry ? "Modifier le cours" : "Ajouter un cours"}</DialogTitle>
                 <DialogDescription>
                   {classes.find((c) => c.id === selectedClassId)?.name ?? ""}
+                  {isGroupedEntry && secondClassId ? ` + ${getClassName(secondClassId)}` : ""}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit}>
                 <div className="grid gap-4 py-4">
+                  {!editingEntry && (
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-1.5 text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input accent-primary"
+                          checked={isGroupedEntry}
+                          onChange={(e) => {
+                            setIsGroupedEntry(e.target.checked);
+                            if (!e.target.checked) setSecondClassId("");
+                            setFormData((prev) => ({ ...prev, subjectId: "" }));
+                          }}
+                        />
+                        Cours commun avec une autre classe
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-64">
+                            Crée le même cours (matière, horaire, professeur) pour les deux
+                            classes en même temps, par exemple quand elles sont réunies
+                          </TooltipContent>
+                        </Tooltip>
+                      </label>
+                      {isGroupedEntry && (
+                        <Select
+                          value={secondClassId}
+                          onValueChange={(value) => {
+                            setSecondClassId(value);
+                            setFormData((prev) => ({ ...prev, subjectId: "" }));
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner la 2e classe" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {timetableClasses
+                              .filter((c) => c.id !== selectedClassId)
+                              .map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                  {editingEntry && editingEntry.groupId && (
+                    <p className="text-xs text-muted-foreground">
+                      Cours commun avec{" "}
+                      {groupPeers(editingEntry)
+                        .map((p) => getClassName(p.classId))
+                        .join(", ")}
+                      . Cette modification ne s&apos;applique qu&apos;à{" "}
+                      {getClassName(editingEntry.classId)}.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
@@ -906,6 +1005,19 @@ export default function EmploisDuTempsPage() {
                                     <div className="group relative rounded-md border border-border bg-muted/40 p-2">
                                       <div className="flex items-center gap-1">
                                         <p className="text-sm font-medium">{entry.subjectName}</p>
+                                        {entry.groupId && (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-56">
+                                              Cours commun avec{" "}
+                                              {groupPeers(entry)
+                                                .map((p) => getClassName(p.classId))
+                                                .join(", ")}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        )}
                                         {!matchesAvailability(entry) && (
                                           <Tooltip>
                                             <TooltipTrigger asChild>

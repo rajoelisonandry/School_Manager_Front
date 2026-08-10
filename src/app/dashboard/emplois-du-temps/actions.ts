@@ -12,10 +12,14 @@ interface BackendTimetableEntry {
   schoolClass: { id: number; name: string }
   teacher: { id: number; firstName: string; lastName: string } | null
   subject: { id: number; name: string }
+  groupId: string | null
 }
 
 export interface TimetableEntryInput {
   classId: string
+  // Quand renseigné (2 classes ou plus), crée le même cours pour chaque classe :
+  // sert aux classes réunies pour une matière commune. Prioritaire sur `classId`.
+  classIds?: string[]
   teacherId?: string
   subjectId: string
   dayOfWeek: string
@@ -36,14 +40,16 @@ function toFrontEntry(entry: BackendTimetableEntry) {
     startTime: entry.startTime,
     endTime: entry.endTime,
     room: entry.room ?? '',
+    groupId: entry.groupId,
   }
 }
 
 function toBackendPayload(data: Partial<TimetableEntryInput>) {
-  const { classId, teacherId, subjectId, ...rest } = data
+  const { classId, classIds, teacherId, subjectId, ...rest } = data
   return {
     ...rest,
     ...(classId !== undefined ? { classId: Number(classId) } : {}),
+    ...(classIds !== undefined ? { classIds: classIds.map(Number) } : {}),
     ...(teacherId !== undefined ? { teacherId: teacherId ? Number(teacherId) : null } : {}),
     ...(subjectId !== undefined ? { subjectId: Number(subjectId) } : {}),
   }
