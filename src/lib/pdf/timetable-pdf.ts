@@ -57,13 +57,18 @@ const DAYS = [
   { key: "samedi", label: "Samedi" },
 ];
 
-// Même grille horaire que l'écran (07h-17h par tranches d'1h), avec les pauses insérées
-// aux mêmes endroits que dans la vraie journée de cours. `start`/`end` restent les bornes
-// utilisées pour retrouver les cours (elles ne bougent pas après une récréation, sinon un
-// cours généré automatiquement à l'heure pile serait invisible) ; `displayStart` ne sert
-// qu'à l'affichage de l'heure, décalée de 15 min pour refléter la pause.
+// Même grille horaire que l'écran (07h-18h par tranches d'1h pleine), avec les
+// pauses insérées comme simples séparateurs visuels entre deux lignes — elles ne
+// décalent jamais les bornes start/end utilisées pour retrouver les cours.
+// Important : ces bornes doivent rester alignées sur celles de la grille à l'écran
+// (HOUR_ROWS dans emplois-du-temps/page.tsx), sinon un cours ajouté manuellement à
+// une heure pleine (ex: 11h-12h, 17h-18h) tombe dans la mauvaise case et disparaît.
+//
+// `displayStart`/`displayEnd` ne changent que le texte affiché dans la colonne
+// "Horaire" (pour retrouver visuellement le dernier bloc de 75 min du matin/de
+// l'après-midi, ex: "10:00 – 11:15"), sans jamais toucher aux bornes de recherche.
 type Row =
-  | { type: "hour"; start: string; end: string; displayStart?: string }
+  | { type: "hour"; start: string; end: string; displayStart?: string; displayEnd?: string }
   | { type: "divider"; label: string };
 
 const ROWS: Row[] = [
@@ -71,15 +76,15 @@ const ROWS: Row[] = [
   { type: "hour", start: "08:00", end: "09:00" },
   { type: "divider", label: "RÉCRÉATION" },
   { type: "hour", start: "09:00", end: "10:00", displayStart: "09:15" },
-  { type: "hour", start: "10:00", end: "11:15" },
-  { type: "hour", start: "11:15", end: "12:00" },
+  { type: "hour", start: "10:00", end: "11:00", displayEnd: "11:15" },
+  { type: "hour", start: "11:00", end: "12:00", displayStart: "11:15" },
   { type: "divider", label: "APRÈS-MIDI" },
   { type: "hour", start: "13:00", end: "14:00" },
   { type: "hour", start: "14:00", end: "15:00" },
   { type: "hour", start: "15:00", end: "16:00" },
   { type: "divider", label: "RÉCRÉATION" },
-  { type: "hour", start: "16:00", end: "17:15", displayStart: "16:15" },
-  { type: "hour", start: "17:15", end: "18:00" },
+  { type: "hour", start: "16:00", end: "17:00", displayStart: "16:15", displayEnd: "17:15" },
+  { type: "hour", start: "17:00", end: "18:00", displayStart: "17:15" },
 ];
 
 const LIGHT_ACCENT: [number, number, number] = ACCENT.map((c) =>
@@ -115,7 +120,7 @@ function drawGroupPage(
       ];
     }
     return [
-      `${row.displayStart ?? row.start} – ${row.end}`,
+      `${row.displayStart ?? row.start} – ${row.displayEnd ?? row.end}`,
       ...DAYS.map((day) => {
         const entry = groupEntries.find(
           (e) =>

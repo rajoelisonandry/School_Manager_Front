@@ -45,6 +45,7 @@ import {
   Loader2,
   FileDown,
   Users,
+  CopyPlus,
 } from "lucide-react";
 import { exportTimetablePdf, exportTeacherTimetablePdf } from "@/lib/pdf/timetable-pdf";
 import {
@@ -135,9 +136,20 @@ const emptyAvailabilityForm: AvailabilityForm = Object.fromEntries(
   DAYS.map((d) => [d.key, { startTime: "", endTime: "" }])
 );
 
-function addHour(time: string) {
+function toMinutes(time: string) {
   const [h, m] = time.split(":").map(Number);
-  return `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return h * 60 + m;
+}
+
+function addMinutes(time: string, minutes: number) {
+  const total = toMinutes(time) + minutes;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function addHour(time: string) {
+  return addMinutes(time, 60);
 }
 
 // Le backend renvoie le corps brut de l'erreur dans le message (ex: '... 409: {"message":"..."}')
@@ -279,6 +291,48 @@ export default function EmploisDuTempsPage() {
       await deleteTimetableEntry(id);
       loadData();
     }
+  };
+
+  // Recopie un cours dans le créneau suivant du même jour (même durée), pour
+  // remplir rapidement plusieurs heures d'affilée avec la même matière.
+  const handleDuplicateEntry = async (entry: TimetableEntry) => {
+    const durationMinutes = toMinutes(entry.endTime) - toMinutes(entry.startTime);
+    const newStartTime = entry.endTime;
+    const newEndTime = addMinutes(newStartTime, durationMinutes);
+    const gridEnd = addHour(HOUR_ROWS[HOUR_ROWS.length - 1]);
+
+    if (toMinutes(newEndTime) > toMinutes(gridEnd)) {
+      alert("Impossible de dupliquer : il n'y a plus de créneau disponible après celui-ci.");
+      return;
+    }
+
+    const targetOccupied = entries.some(
+      (e) =>
+        e.classId === entry.classId &&
+        e.dayOfWeek === entry.dayOfWeek &&
+        e.startTime < newEndTime &&
+        e.endTime > newStartTime
+    );
+    if (targetOccupied) {
+      alert("Le créneau suivant est déjà occupé pour cette classe.");
+      return;
+    }
+
+    try {
+      await createTimetableEntry({
+        classId: entry.classId,
+        teacherId: entry.teacherId,
+        subjectId: entry.subjectId,
+        dayOfWeek: entry.dayOfWeek,
+        startTime: newStartTime,
+        endTime: newEndTime,
+        room: entry.room,
+      });
+    } catch (error) {
+      alert(extractErrorMessage(error));
+      return;
+    }
+    loadData();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -563,7 +617,10 @@ export default function EmploisDuTempsPage() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <span>
-                <Button onClick={handleOpenCreate} disabled={!selectedClassId}>
+                <Button
+                  onClick={handleOpenCreate}
+                  disabled={!selectedClassId || selectedClassId === ALL_CLASSES}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Ajouter un cours
                 </Button>
@@ -948,6 +1005,7 @@ export default function EmploisDuTempsPage() {
             <SelectValue placeholder="Sélectionner une classe" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={ALL_CLASSES}>Toutes les classes</SelectItem>
             {timetableClasses.map((cls) => (
               <SelectItem key={cls.id} value={cls.id}>
                 {cls.name}
@@ -965,7 +1023,7 @@ export default function EmploisDuTempsPage() {
         </Card>
       ) : (
         timetableClasses
-          .filter((cls) => cls.id === selectedClassId)
+          .filter((cls) => selectedClassId === ALL_CLASSES || cls.id === selectedClassId)
           .map((cls) => {
           const classEntries = entries.filter((e) => e.classId === cls.id);
           return (
@@ -1058,6 +1116,22 @@ export default function EmploisDuTempsPage() {
                                         </p>
                                       )}
                                       <div className="mt-1 hidden gap-1 group-hover:flex">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-6 w-6"
+                                              onClick={() => handleDuplicateEntry(entry)}
+                                            >
+                                              <CopyPlus className="h-3 w-3" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            Dupliquer cette matière dans le créneau suivant
+                                          </TooltipContent>
+                                        </Tooltip>
                                         <Button
                                           type="button"
                                           variant="ghost"
