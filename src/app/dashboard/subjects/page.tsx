@@ -197,7 +197,7 @@ export default function SubjectsPage() {
               Nouvelle Matière
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden">
             <DialogHeader>
               <DialogTitle>
                 {editingSubject ? "Modifier la Matière" : "Nouvelle Matière"}
@@ -208,8 +208,8 @@ export default function SubjectsPage() {
                   : "Ajouter une nouvelle matière au système"}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
+            <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+              <div className="grid flex-1 gap-4 overflow-y-auto overflow-x-hidden py-4 pr-1 min-h-0">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
                     Nom<span className="text-destructive">*</span>

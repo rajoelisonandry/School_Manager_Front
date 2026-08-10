@@ -964,7 +964,9 @@ export default function EmploisDuTempsPage() {
           </CardContent>
         </Card>
       ) : (
-        timetableClasses.map((cls) => {
+        timetableClasses
+          .filter((cls) => cls.id === selectedClassId)
+          .map((cls) => {
           const classEntries = entries.filter((e) => e.classId === cls.id);
           return (
             <Card key={cls.id}>

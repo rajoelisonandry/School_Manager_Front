@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
-import { Search, Check, ChevronsUpDown } from "lucide-react"
+import { Search, Check, ChevronsUpDown, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface MultiSelectOption {
@@ -69,6 +69,17 @@ export function MultiSelect({
     }
   }
 
+  // Coche/décoche tout le groupe d'un coup (ex: tout le lycée, tout le collège).
+  const toggleGroup = (groupOptions: MultiSelectOption[]) => {
+    const groupValues = groupOptions.map((o) => o.value)
+    const allSelected = groupValues.every((v) => values.includes(v))
+    onValuesChange(
+      allSelected
+        ? values.filter((v) => !groupValues.includes(v))
+        : [...values, ...groupValues.filter((v) => !values.includes(v))]
+    )
+  }
+
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
@@ -106,33 +117,53 @@ export function MultiSelect({
             {filtered.length === 0 && (
               <p className="px-2 py-4 text-center text-sm text-muted-foreground">{emptyMessage}</p>
             )}
-            {groups.map(([group, groupOptions]) => (
-              <div key={group || "_"}>
-                {group && (
-                  <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
-                    {group}
-                  </p>
-                )}
-                {groupOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => toggle(option.value)}
-                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span
-                      className={cn(
-                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-input",
-                        values.includes(option.value) && "border-primary bg-primary text-primary-foreground"
-                      )}
+            {groups.map(([group, groupOptions]) => {
+              const groupValues = groupOptions.map((o) => o.value)
+              const allSelected = groupValues.every((v) => values.includes(v))
+              const someSelected = !allSelected && groupValues.some((v) => values.includes(v))
+              return (
+                <div key={group || "_"}>
+                  {group && (
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(groupOptions)}
+                      className="flex w-full items-center gap-2 rounded-sm px-2 pb-1 pt-2 text-left hover:bg-accent/50"
                     >
-                      {values.includes(option.value) && <Check className="h-3 w-3" />}
-                    </span>
-                    <span className="truncate">{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            ))}
+                      <span
+                        className={cn(
+                          "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border border-input",
+                          (allSelected || someSelected) && "border-primary bg-primary text-primary-foreground"
+                        )}
+                      >
+                        {allSelected && <Check className="h-2.5 w-2.5" />}
+                        {someSelected && <Minus className="h-2.5 w-2.5" />}
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+                        {group}
+                      </span>
+                    </button>
+                  )}
+                  {groupOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => toggle(option.value)}
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <span
+                        className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-input",
+                          values.includes(option.value) && "border-primary bg-primary text-primary-foreground"
+                        )}
+                      >
+                        {values.includes(option.value) && <Check className="h-3 w-3" />}
+                      </span>
+                      <span className="truncate">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )
+            })}
           </div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
