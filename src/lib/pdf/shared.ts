@@ -1,10 +1,12 @@
 import { jsPDF } from "jspdf";
 import { currentSchoolYear } from "@/lib/school-year";
+import { SCHOOL_NAME, SCHOOL_TAGLINE } from "@/lib/branding";
 
 export const PRIMARY: [number, number, number] = [21, 60, 94];
 export const ACCENT: [number, number, number] = [222, 142, 53];
-export const SCHOOL_ADDRESS = "Lot 077 G Bis Ambohibao Antehiroka";
-export const SCHOOL_PHONE = "+261 34 01 332 78";
+// Réexportés ici pour ne pas casser les imports existants (`from "./shared"`) ;
+// la source de vérité est désormais @/lib/branding.
+export { SCHOOL_ADDRESS, SCHOOL_PHONE } from "@/lib/branding";
 
 export function getFinalY(doc: jsPDF): number {
   return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
@@ -16,11 +18,11 @@ export function drawPdfHeader(doc: jsPDF, subtitle: string, startY = 42): number
   doc.setTextColor(...PRIMARY);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Au Bel Enfant", 14, 18);
+  doc.text(SCHOOL_NAME, 14, 18);
 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(10);
-  doc.text("Ambition - Motivation - Réussite", 14, 25);
+  doc.text(SCHOOL_TAGLINE, 14, 25);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);

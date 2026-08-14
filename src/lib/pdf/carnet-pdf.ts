@@ -2,6 +2,7 @@ import { jsPDF, GState } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PRIMARY, ACCENT, SCHOOL_ADDRESS, SCHOOL_PHONE, slugify } from "./shared";
 import { genderLabel, formatDate } from "./students-pdf";
+import { SCHOOL_NAME, SCHOOL_TAGLINE, SCHOOL_LEVEL_LABEL } from "@/lib/branding";
 
 export interface StudentForCarnet {
   matricule: string;
@@ -322,15 +323,15 @@ async function drawCoverPage(
   doc.setFont(POPPINS, "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(...ACCENT);
-  doc.text("LYCÉE PRIVÉ", centerContentX, cursorY + headerH * 0.1, { align: "center" });
+  doc.text(SCHOOL_LEVEL_LABEL, centerContentX, cursorY + headerH * 0.1, { align: "center" });
   doc.setFont(POPPINS, "bold");
   doc.setFontSize(19);
   doc.setTextColor(...PRIMARY);
-  doc.text("Au Bel Enfant", centerContentX, cursorY + headerH * 0.24, { align: "center" });
+  doc.text(SCHOOL_NAME, centerContentX, cursorY + headerH * 0.24, { align: "center" });
   doc.setFont(POPPINS, "normal");
   doc.setFontSize(9);
   doc.setTextColor(0, 0, 0);
-  doc.text("Ambition - Motivation - Réussite", centerContentX, cursorY + headerH * 0.35, {
+  doc.text(SCHOOL_TAGLINE, centerContentX, cursorY + headerH * 0.35, {
     align: "center",
   });
   doc.setDrawColor(...PRIMARY);
@@ -489,11 +490,11 @@ function drawInfoPage(
   doc.setFont(POPPINS, "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(...ACCENT);
-  doc.text("LYCÉE PRIVÉ", contentX, contentTop + 2.5);
+  doc.text(SCHOOL_LEVEL_LABEL, contentX, contentTop + 2.5);
   doc.setFont(POPPINS, "semibold");
   doc.setFontSize(10);
   doc.setTextColor(...PRIMARY);
-  doc.text("Au Bel Enfant", contentX, contentTop + 9);
+  doc.text(SCHOOL_NAME, contentX, contentTop + 9);
   doc.setFont(POPPINS, "bold");
   doc.setFontSize(15);
   doc.setTextColor(0, 0, 0);

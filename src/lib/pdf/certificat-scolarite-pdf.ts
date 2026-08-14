@@ -1,6 +1,13 @@
 import { jsPDF } from "jspdf";
 import { PRIMARY, ACCENT, SCHOOL_ADDRESS, SCHOOL_PHONE, slugify } from "./shared";
 import { formatDate } from "./students-pdf";
+import {
+  SCHOOL_NAME,
+  SCHOOL_TAGLINE,
+  SCHOOL_LEVEL_LABEL,
+  SCHOOL_DIRECTOR_NAME,
+  SCHOOL_DIRECTOR_TITLE,
+} from "@/lib/branding";
 
 export interface StudentForCertificate {
   matricule: string;
@@ -28,19 +35,19 @@ export function exportCertificatScolaritePdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(...ACCENT);
-  doc.text("LYCÉE PRIVÉ", centerX, y, { align: "center" });
+  doc.text(SCHOOL_LEVEL_LABEL, centerX, y, { align: "center" });
 
   y += 8;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(...PRIMARY);
-  doc.text("Au Bel Enfant", centerX, y, { align: "center" });
+  doc.text(SCHOOL_NAME, centerX, y, { align: "center" });
 
   y += 6;
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9.5);
   doc.setTextColor(0, 0, 0);
-  doc.text("Ambition - Motivation - Réussite", centerX, y, { align: "center" });
+  doc.text(SCHOOL_TAGLINE, centerX, y, { align: "center" });
 
   y += 5;
   doc.setDrawColor(...PRIMARY);
@@ -78,7 +85,7 @@ export function exportCertificatScolaritePdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11.5);
   doc.setTextColor(0, 0, 0);
-  const intro = `Je soussignée, Directrice de l'Établissement Lycée Privé AU BEL ENFANT, certifie que l'élève désigné(e) ci-dessous est régulièrement inscrit(e) dans notre établissement au titre de l'année scolaire ${schoolYear} :`;
+  const intro = `Je soussigné(e), ${SCHOOL_DIRECTOR_TITLE} de l'établissement ${SCHOOL_NAME}, certifie que l'élève désigné(e) ci-dessous est régulièrement inscrit(e) dans notre établissement au titre de l'année scolaire ${schoolYear} :`;
   const introLines = doc.splitTextToSize(intro, contentW);
   doc.text(introLines, MARGIN, y, { align: "justify", maxWidth: contentW });
   y += introLines.length * 6 + 8;
@@ -130,14 +137,14 @@ export function exportCertificatScolaritePdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.setTextColor(0, 0, 0);
-  doc.text("La Directrice", signatureX + 30, y, { align: "center" });
+  doc.text(SCHOOL_DIRECTOR_TITLE, signatureX + 30, y, { align: "center" });
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
   doc.line(signatureX, stampY + stampH - 4, signatureX + 60, stampY + stampH - 4);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.setTextColor(0, 0, 0);
-  doc.text("Mme RAKOTOARIZAO Voahangy", signatureX + 30, stampY + stampH + 2, { align: "center" });
+  doc.text(SCHOOL_DIRECTOR_NAME, signatureX + 30, stampY + stampH + 2, { align: "center" });
 
   doc.save(`certificat-scolarite-${slugify(`${student.lastName}-${student.firstName}`)}.pdf`);
 }

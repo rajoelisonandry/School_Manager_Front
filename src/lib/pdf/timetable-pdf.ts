@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PRIMARY, ACCENT, slugify } from "./shared";
+import { SCHOOL_NAME, SCHOOL_TAGLINE } from "@/lib/branding";
 
 // Entête compacte dédiée (au lieu de drawPdfHeader, pensée pour un document sur une
 // seule page) : le tableau de 13 lignes a besoin de tout l'espace vertical disponible.
@@ -10,11 +11,11 @@ function drawCompactHeader(doc: jsPDF, subtitle: string): number {
   doc.setTextColor(...PRIMARY);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text("Au Bel Enfant", 10, 9);
+  doc.text(SCHOOL_NAME, 10, 9);
 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  doc.text("Ambition - Motivation - Réussite", 10, 13.5);
+  doc.text(SCHOOL_TAGLINE, 10, 13.5);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);

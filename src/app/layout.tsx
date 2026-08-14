@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SCHOOL_NAME } from "@/lib/branding";
 
 const themeInitScript = `
   (function () {
@@ -31,9 +32,9 @@ const googleSansItalic = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Au Bel Enfant - Système de Gestion d'École",
+  title: `${SCHOOL_NAME} - Système de Gestion d'École`,
   description: "Syst ème de gestion scolaire complet",
-  manifest: "/manifest.json",
+  // Le manifest PWA est généré dynamiquement par src/app/manifest.ts (branding).
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -46,7 +47,7 @@ export const metadata: Metadata = {
     // écran (sans barre Safari), avec l'icône ci-dessus au lieu du favicon.
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Au Bel Enfant",
+    title: SCHOOL_NAME,
   },
 };
 

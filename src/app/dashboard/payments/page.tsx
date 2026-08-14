@@ -51,6 +51,7 @@ import {
   yearForMonth,
   SCHOOL_MONTHS,
 } from "@/lib/school-year";
+import { SCHOOL_NAME, SCHOOL_TAGLINE } from "@/lib/branding";
 
 interface Payment {
   id: string;
@@ -130,8 +131,8 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
   return (
     <div className="font-mono text-xs text-foreground">
       <div className="text-center">
-        <p className="text-sm font-bold uppercase">Au Bel Enfant</p>
-        <p className="italic text-muted-foreground">Ambition - Motivation - Réussite</p>
+        <p className="text-sm font-bold uppercase">{SCHOOL_NAME}</p>
+        <p className="italic text-muted-foreground">{SCHOOL_TAGLINE}</p>
       </div>
       <p className="mt-1 text-center text-[10px] font-semibold uppercase tracking-wide">
         {label}

@@ -20,6 +20,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import { SCHOOL_NAME } from "@/lib/branding";
 
 const features = [
   { icon: Users, text: "Gestion complète des élèves et des classes" },
@@ -70,7 +71,7 @@ export default function LoginPage() {
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm ring-1 ring-white/25">
             <GraduationCap className="h-6 w-6" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Au Bel Enfant</span>
+          <span className="text-lg font-semibold tracking-tight">{SCHOOL_NAME}</span>
         </div>
 
         <div className="relative space-y-8">
@@ -97,7 +98,7 @@ export default function LoginPage() {
         </div>
 
         <p className="relative text-xs text-white/60">
-          © {new Date().getFullYear()} Au Bel Enfant — Système de Gestion d&apos;École
+          © {new Date().getFullYear()} {SCHOOL_NAME} — Système de Gestion d&apos;École
         </p>
       </div>
 
@@ -118,7 +119,7 @@ export default function LoginPage() {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <GraduationCap className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Au Bel Enfant</h1>
+            <h1 className="text-2xl font-bold text-foreground">{SCHOOL_NAME}</h1>
             <p className="text-sm text-muted-foreground">Système de Gestion d&apos;École</p>
           </div>
 

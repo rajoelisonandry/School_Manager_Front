@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PRIMARY, ACCENT, drawPdfHeader, getFinalY, slugify } from "./shared";
 import { collectDsLabels, formatGrade } from "@/lib/bulletin";
+import { SCHOOL_DIRECTOR_TITLE } from "@/lib/branding";
 
 export interface BulletinGradeDetailForPdf {
   label: string;
@@ -152,7 +153,7 @@ function drawBulletinPage(
   doc.line(signatureX, signatureY + 16, signatureX + 55, signatureY + 16);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
-  doc.text("La Directrice", signatureX + 27.5, signatureY + 21, { align: "center" });
+  doc.text(SCHOOL_DIRECTOR_TITLE, signatureX + 27.5, signatureY + 21, { align: "center" });
 }
 
 // Un bulletin par élève : un seul (aperçu / réimpression) ou toute une classe d'un coup.

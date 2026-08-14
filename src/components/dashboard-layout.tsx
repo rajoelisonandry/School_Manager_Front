@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useState } from "react";
+import { SCHOOL_NAME, SCHOOL_LEVEL_LABEL } from "@/lib/branding";
 
 interface NavItem {
   name: string;
@@ -213,10 +214,10 @@ export default function DashboardLayout({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Lycée Privé
+                  {SCHOOL_LEVEL_LABEL}
                 </p>
                 <h1 className="truncate text-lg font-bold leading-tight text-foreground">
-                  Au Bel Enfant
+                  {SCHOOL_NAME}
                 </h1>
               </div>
             </div>
@@ -330,10 +331,10 @@ export default function DashboardLayout({
             </Button>
             <div className="text-center">
               <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Lycée Privé
+                {SCHOOL_LEVEL_LABEL}
               </p>
               <h1 className="text-base font-bold leading-tight text-foreground">
-                Au Bel Enfant
+                {SCHOOL_NAME}
               </h1>
             </div>
             <div className="flex items-center">
