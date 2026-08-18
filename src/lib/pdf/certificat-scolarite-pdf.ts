@@ -7,6 +7,8 @@ import {
   SCHOOL_LEVEL_LABEL,
   SCHOOL_DIRECTOR_NAME,
   SCHOOL_DIRECTOR_TITLE,
+  SCHOOL_NIF,
+  SCHOOL_STAT,
 } from "@/lib/branding";
 
 export interface StudentForCertificate {
@@ -60,6 +62,11 @@ export function exportCertificatScolaritePdf(
   doc.text(`Adresse : ${SCHOOL_ADDRESS}`, centerX, y, { align: "center" });
   y += 5;
   doc.text(`Tél. : ${SCHOOL_PHONE}`, centerX, y, { align: "center" });
+  y += 5;
+  doc.setFontSize(7.5);
+  doc.setTextColor(90, 90, 90);
+  doc.text(`NIF : ${SCHOOL_NIF}   •   STAT : ${SCHOOL_STAT}`, centerX, y, { align: "center" });
+  doc.setTextColor(0, 0, 0);
 
   // Référence : année scolaire
   y += 10;

@@ -3,6 +3,8 @@ import autoTable from "jspdf-autotable";
 import { PRIMARY, ACCENT, SCHOOL_ADDRESS, SCHOOL_PHONE, slugify } from "./shared";
 import { genderLabel, formatDate } from "./students-pdf";
 import { SCHOOL_NAME, SCHOOL_TAGLINE, SCHOOL_LEVEL_LABEL } from "@/lib/branding";
+import { SCHOOL_MONTHS } from "@/lib/school-year";
+import { POPPINS, registerPoppins, loadPhoto, fitContain } from "./pdf-assets";
 
 export interface StudentForCarnet {
   matricule: string;
@@ -23,106 +25,25 @@ export interface StudentForCarnet {
   identityPhotoUrl?: string;
 }
 
+export interface CarnetPaidEntry {
+  date: string;
+  amount: number;
+}
+
+// Paiements déjà encaissés à la date d'export, pour préremplir le tableau au lieu
+// de le laisser entièrement vide : la ligne FG reprend le paiement d'inscription
+// (ou réinscription) de l'élève, et chaque mois d'écolage déjà réglé sa date et
+// son montant. `ecolageByMonth` est indexé par la clé de mois (voir SCHOOL_MONTHS).
+export interface CarnetPaymentSummary {
+  registration?: CarnetPaidEntry;
+  ecolageByMonth?: Partial<Record<string, CarnetPaidEntry>>;
+}
+
 const LIGHT: [number, number, number] = PRIMARY.map((c) =>
   Math.round(c + (255 - c) * 0.75)
 ) as [number, number, number];
 const MARGIN = 14;
 const CORNER_MARK_LENGTH = 9;
-
-const POPPINS = "Poppins";
-const POPPINS_FILES: Record<"normal" | "semibold" | "bold", string> = {
-  normal: "/fonts/poppins/Poppins-Regular.ttf",
-  semibold: "/fonts/poppins/Poppins-SemiBold.ttf",
-  bold: "/fonts/poppins/Poppins-Bold.ttf",
-};
-
-let poppinsCache: Record<keyof typeof POPPINS_FILES, string> | null = null;
-
-async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-async function loadPoppins() {
-  if (poppinsCache) return poppinsCache;
-  const entries = Object.entries(POPPINS_FILES) as [keyof typeof POPPINS_FILES, string][];
-  const results = await Promise.all(
-    entries.map(async ([, url]) => {
-      const res = await fetch(url);
-      const buffer = await res.arrayBuffer();
-      return arrayBufferToBase64(buffer);
-    })
-  );
-  const cache = {} as Record<keyof typeof POPPINS_FILES, string>;
-  entries.forEach(([key], i) => {
-    cache[key] = results[i];
-  });
-  poppinsCache = cache;
-  return cache;
-}
-
-// Police Poppins pour les titres et libellés (+ Helvetica gardée pour le tableau
-// de la fiche de renseignements) afin d'obtenir une typographie plus moderne et variée.
-async function registerPoppins(doc: jsPDF) {
-  const fonts = await loadPoppins();
-  doc.addFileToVFS("Poppins-Regular.ttf", fonts.normal);
-  doc.addFont("Poppins-Regular.ttf", POPPINS, "normal");
-  doc.addFileToVFS("Poppins-SemiBold.ttf", fonts.semibold);
-  doc.addFont("Poppins-SemiBold.ttf", POPPINS, "semibold");
-  doc.addFileToVFS("Poppins-Bold.ttf", fonts.bold);
-  doc.addFont("Poppins-Bold.ttf", POPPINS, "bold");
-}
-
-const MIME_TO_FORMAT: Record<string, string> = {
-  "image/jpeg": "JPEG",
-  "image/jpg": "JPEG",
-  "image/png": "PNG",
-  "image/webp": "WEBP",
-};
-
-async function loadPhoto(
-  url: string
-): Promise<{ dataUrl: string; format: string; width: number; height: number } | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    const format = MIME_TO_FORMAT[blob.type] ?? "JPEG";
-
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-
-    const { width, height } = await new Promise<{ width: number; height: number }>(
-      (resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-        img.onerror = () => reject(new Error("image decode failed"));
-        img.src = dataUrl;
-      }
-    );
-
-    return { dataUrl, format, width, height };
-  } catch {
-    return null;
-  }
-}
-
-// Redimensionne (sans déformer) l'image pour qu'elle tienne dans la boîte, centrée.
-function fitContain(imgW: number, imgH: number, boxW: number, boxH: number) {
-  const scale = Math.min(boxW / imgW, boxH / imgH);
-  const w = imgW * scale;
-  const h = imgH * scale;
-  return { w, h, x: (boxW - w) / 2, y: (boxH - h) / 2 };
-}
 
 // Découpe le titre sur 2 lignes si une seule ligne dépasse la largeur disponible.
 function fitTitleLines(doc: jsPDF, text: string, maxWidth: number, fontSize: number): string[] {
@@ -464,16 +385,142 @@ async function drawCoverPage(
   doc.setTextColor(0, 0, 0);
 }
 
+// Format manuel (ex: "90.000Ar") plutôt que toLocaleString("fr-FR") : ce dernier
+// utilise une espace fine insécable comme séparateur de milliers, un caractère que
+// la police Helvetica standard de jsPDF ne sait pas afficher (glyphe manquant,
+// rendu comme un "/" dans le tableau). Le point + l'absence d'espace tiennent
+// aussi mieux dans la largeur de la colonne "Montant".
+function formatAriary(amount: number) {
+  return `${Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}Ar`;
+}
+
+// Tableau vierge de suivi de l'écolage (colonnes mois / date / montant / signature),
+// destiné à être rempli à la main. Occupe la moitié gauche de la page, en miroir de
+// la fiche de renseignements affichée à droite.
+function drawEcolageTable(
+  doc: jsPDF,
+  ecolageAmount: number,
+  paymentSummary: CarnetPaymentSummary
+) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const centerX = pageWidth / 2;
+
+  const frameX = MARGIN;
+  const frameY = MARGIN;
+  const frameW = centerX - 8 - MARGIN;
+  const frameH = pageHeight - 2 * MARGIN;
+
+  // Pas de cadre ici (contrairement à la fiche de droite) : uniquement le titre,
+  // le montant de l'écolage, puis le tableau qui occupe tout l'espace restant.
+  const pad = 5;
+  const contentX = frameX + pad;
+  const contentW = frameW - 2 * pad;
+  const contentTop = frameY + pad;
+  const contentBottom = frameY + frameH - pad;
+
+  doc.setFont(POPPINS, "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Suivi des paiements", contentX, contentTop + 5);
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.6);
+  doc.line(contentX, contentTop + 8, contentX + contentW, contentTop + 8);
+
+  doc.setFont(POPPINS, "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...PRIMARY);
+  doc.text(`ÉCOLAGE : ${formatAriary(ecolageAmount)}`, contentX, contentTop + 15);
+
+  // Libellés des lignes : les frais annuels (fournitures, excursion, fête...)
+  // encadrent les mensualités de l'écolage, de septembre à juillet (le mois
+  // d'août, hors année scolaire, est exclu). "fg" reprend le paiement
+  // d'inscription/réinscription de l'élève s'il a déjà été réglé ; chaque ligne
+  // de mois reprend le paiement d'écolage correspondant s'il a déjà été réglé.
+  const monthLabel = (key: string) => SCHOOL_MONTHS.find((m) => m.key === key)!.label;
+  const rowSpecs: { key: string; label: string }[] = [
+    { key: "rampapier", label: "RAM PAPIER" },
+    { key: "pcchemise", label: "PC+C CHEMISE" },
+    { key: "fg", label: "FG" },
+    { key: "septembre", label: monthLabel("septembre") },
+    { key: "octobre", label: monthLabel("octobre") },
+    { key: "novembre", label: monthLabel("novembre") },
+    { key: "decembre", label: monthLabel("decembre") },
+    { key: "gouterdefete", label: "Goûter de fête" },
+    { key: "janvier", label: monthLabel("janvier") },
+    { key: "fevrier", label: monthLabel("fevrier") },
+    { key: "mars", label: monthLabel("mars") },
+    { key: "avril", label: monthLabel("avril") },
+    { key: "mai", label: monthLabel("mai") },
+    { key: "excursion", label: "Excursion" },
+    { key: "juin", label: monthLabel("juin") },
+    { key: "juillet", label: monthLabel("juillet") },
+  ];
+
+  const paidEntryFor = (key: string): CarnetPaidEntry | undefined =>
+    key === "fg" ? paymentSummary.registration : paymentSummary.ecolageByMonth?.[key];
+
+  // Hauteur de ligne calculée pour que le tableau (en-tête compris) occupe
+  // l'essentiel de l'espace restant, avec une petite marge de sécurité pour
+  // ne jamais déborder sur une nouvelle page (bordures, arrondis d'affichage).
+  const tableY = contentTop + 19;
+  const safetyMargin = 8;
+  const rowH = (contentBottom - tableY - safetyMargin) / (rowSpecs.length + 1);
+
+  autoTable(doc, {
+    startY: tableY,
+    head: [["Libellé", "Date", "Montant", "Signature"]],
+    body: rowSpecs.map(({ key, label }) => {
+      const paid = paidEntryFor(key);
+      return [label, paid ? formatDate(paid.date) : "", paid ? formatAriary(paid.amount) : "", ""];
+    }),
+    theme: "grid",
+    styles: {
+      font: "helvetica",
+      fontSize: 9,
+      cellPadding: 1.5,
+      valign: "middle",
+      textColor: [0, 0, 0],
+      lineColor: [205, 205, 205],
+      lineWidth: 0.2,
+      minCellHeight: rowH,
+    },
+    headStyles: {
+      fillColor: false,
+      textColor: PRIMARY,
+      fontStyle: "bold",
+      halign: "center",
+      minCellHeight: rowH,
+    },
+    columnStyles: {
+      0: { cellWidth: contentW * 0.3, fontStyle: "bold" },
+      1: { cellWidth: contentW * 0.2, halign: "center" },
+      2: { cellWidth: contentW * 0.2, halign: "center" },
+      3: { cellWidth: contentW * 0.3 },
+    },
+    margin: {
+      left: contentX,
+      right: pageWidth - (contentX + contentW),
+      bottom: pageHeight - contentBottom,
+    },
+    tableWidth: contentW,
+  });
+}
+
 function drawInfoPage(
   doc: jsPDF,
   student: StudentForCarnet,
-  className: string
+  className: string,
+  ecolageAmount: number,
+  paymentSummary: CarnetPaymentSummary
 ) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const centerX = pageWidth / 2;
 
   drawFoldGuide(doc, centerX, pageHeight);
+
+  drawEcolageTable(doc, ecolageAmount, paymentSummary);
 
   const frameX = centerX + 8;
   const frameY = MARGIN;
@@ -570,7 +617,9 @@ export async function exportCarnetCoverPdf(
   student: StudentForCarnet,
   className: string,
   schoolYear: string,
-  classLevel: string = ""
+  classLevel: string = "",
+  ecolageAmount: number = 0,
+  paymentSummary: CarnetPaymentSummary = {}
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   await registerPoppins(doc);
@@ -578,7 +627,7 @@ export async function exportCarnetCoverPdf(
   await drawCoverPage(doc, student, className, schoolYear, classLevel);
 
   doc.addPage("a4", "landscape");
-  drawInfoPage(doc, student, className);
+  drawInfoPage(doc, student, className, ecolageAmount, paymentSummary);
 
   doc.save(`carnet-${slugify(`${student.lastName}-${student.firstName}`)}.pdf`);
 }

@@ -11,6 +11,10 @@ export const SCHOOL_LEVEL_LABEL = process.env.NEXT_PUBLIC_SCHOOL_LEVEL_LABEL || 
 export const SCHOOL_ADDRESS =
   process.env.NEXT_PUBLIC_SCHOOL_ADDRESS || "Lot 077 G Bis Ambohibao Antehiroka";
 export const SCHOOL_PHONE = process.env.NEXT_PUBLIC_SCHOOL_PHONE || "+261 34 01 332 78";
+// Identifiants fiscaux/statistiques de l'établissement, affichés sur les documents
+// officiels (reçus, certificats...).
+export const SCHOOL_NIF = process.env.NEXT_PUBLIC_SCHOOL_NIF || "4016760914";
+export const SCHOOL_STAT = process.env.NEXT_PUBLIC_SCHOOL_STAT || "85101 11 1995 0 06023";
 // Utilisé sur les documents officiels (certificats, bulletins) : bloc signature.
 export const SCHOOL_DIRECTOR_NAME =
   process.env.NEXT_PUBLIC_SCHOOL_DIRECTOR_NAME || "Mme RAKOTOARIZAO Voahangy";

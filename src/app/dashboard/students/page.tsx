@@ -126,9 +126,9 @@ export default function StudentsPage() {
       getClasses(),
       getPayments(),
     ]);
-    // Triés par date de création (plus récent en premier), quel que soit l'ordre renvoyé par l'API.
+    // Triés par date de création (plus ancien en premier), quel que soit l'ordre renvoyé par l'API.
     const sortedStudents = [...studentsData].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
     setStudents(sortedStudents);
     setClasses(classesData);

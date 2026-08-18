@@ -51,7 +51,15 @@ import {
   yearForMonth,
   SCHOOL_MONTHS,
 } from "@/lib/school-year";
-import { SCHOOL_NAME, SCHOOL_TAGLINE } from "@/lib/branding";
+import {
+  SCHOOL_NAME,
+  SCHOOL_TAGLINE,
+  SCHOOL_LEVEL_LABEL,
+  SCHOOL_ADDRESS,
+  SCHOOL_PHONE,
+  SCHOOL_NIF,
+  SCHOOL_STAT,
+} from "@/lib/branding";
 
 interface Payment {
   id: string;
@@ -123,7 +131,13 @@ function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
 }
 
-function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }) {
+function ReceiptCopy({
+  payments,
+  studentClassName,
+}: {
+  payments: Payment[];
+  studentClassName: string;
+}) {
   const first = payments[0];
   const totalDue = payments.reduce((sum, p) => sum + p.amountDue, 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amountPaid, 0);
@@ -131,18 +145,23 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
   return (
     <div className="font-mono text-xs text-foreground">
       <div className="text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {SCHOOL_LEVEL_LABEL}
+        </p>
         <p className="text-sm font-bold uppercase">{SCHOOL_NAME}</p>
         <p className="italic text-muted-foreground">{SCHOOL_TAGLINE}</p>
+        <p className="text-[9px] text-muted-foreground">{SCHOOL_ADDRESS}</p>
+        <p className="text-[9px] text-muted-foreground">Tél. {SCHOOL_PHONE}</p>
+        <p className="text-[9px] text-muted-foreground">
+          NIF {SCHOOL_NIF} • STAT {SCHOOL_STAT}
+        </p>
       </div>
-      <p className="mt-1 text-center text-[10px] font-semibold uppercase tracking-wide">
-        {label}
-      </p>
-      <div className="my-1 border-t border-dashed border-foreground/30" />
+      <div className="my-2.5 border-t border-dashed border-foreground/30" />
       <p className="text-center font-semibold">REÇU DE PAIEMENT</p>
       <p className="text-center text-muted-foreground">
         N° {first.receiptNumber.padStart(6, "0")}
       </p>
-      <div className="my-1 border-t border-dashed border-foreground/30" />
+      <div className="my-2.5 border-t border-dashed border-foreground/30" />
 
       <div className="space-y-1">
         <div className="flex justify-between gap-2">
@@ -154,12 +173,16 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
           <span>{first.studentMatricule}</span>
         </div>
         <div className="flex justify-between gap-2">
+          <span>Classe</span>
+          <span>{studentClassName}</span>
+        </div>
+        <div className="flex justify-between gap-2">
           <span>Date</span>
           <span>{new Date(first.paymentDate).toLocaleDateString("fr-FR")}</span>
         </div>
       </div>
 
-      <div className="my-1 border-t border-dashed border-foreground/30" />
+      <div className="my-2.5 border-t border-dashed border-foreground/30" />
 
       <div className="space-y-1">
         {payments.map((p) => (
@@ -178,7 +201,7 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
         ))}
       </div>
 
-      <div className="my-1 border-t border-dashed border-foreground/30" />
+      <div className="my-2.5 border-t border-dashed border-foreground/30" />
 
       <div className="space-y-1">
         <div className="flex justify-between gap-2 font-bold">
@@ -193,13 +216,13 @@ function ReceiptCopy({ payments, label }: { payments: Payment[]; label: string }
         )}
       </div>
 
-      <div className="my-1 border-t border-dashed border-foreground/30" />
+      <div className="my-2.5 border-t border-dashed border-foreground/30" />
 
       <p className="text-center text-[10px] text-muted-foreground">
         Enregistré par {first.recordedByName ?? "-"}
       </p>
 
-      <div className="my-1 border-t border-dashed border-foreground/30" />
+      <div className="my-2.5 border-t border-dashed border-foreground/30" />
 
       <p className="text-center font-semibold">Merci de votre confiance !</p>
     </div>
@@ -304,6 +327,9 @@ export default function PaymentsPage() {
 
   const getClassName = (classId: string) =>
     classes.find((c) => c.id === classId)?.name ?? "Non assigné";
+
+  const getClassNameForStudent = (studentId: string) =>
+    getClassName(getClassIdForStudent(studentId));
 
   const handleStudentChange = (studentId: string) => {
     const classId = getClassIdForStudent(studentId);
@@ -903,9 +929,10 @@ export default function PaymentsPage() {
 
           {receiptPayments && (
             <div className="mx-auto max-h-[65vh] w-full max-w-[280px] overflow-y-auto rounded-md border border-dashed border-foreground/30 bg-card p-4">
-              <ReceiptCopy payments={receiptPayments} label="Exemplaire Client" />
-              <CutLine />
-              <ReceiptCopy payments={receiptPayments} label="Exemplaire École" />
+              <ReceiptCopy
+                payments={receiptPayments}
+                studentClassName={getClassNameForStudent(receiptPayments[0].studentId)}
+              />
               <CutLine className="mt-6 mb-2" />
               <div className="h-[2cm]" />
             </div>
@@ -929,9 +956,10 @@ export default function PaymentsPage() {
         typeof document !== "undefined" &&
         createPortal(
           <div id="payment-receipt" className="hidden print:block">
-            <ReceiptCopy payments={receiptPayments} label="Exemplaire Client" />
-            <CutLine />
-            <ReceiptCopy payments={receiptPayments} label="Exemplaire École" />
+            <ReceiptCopy
+              payments={receiptPayments}
+              studentClassName={getClassNameForStudent(receiptPayments[0].studentId)}
+            />
             <CutLine className="mt-6 mb-2" />
             <div className="h-[2cm]" />
           </div>,
