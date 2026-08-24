@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { SCHOOL_NAME, SCHOOL_LEVEL_LABEL } from "@/lib/branding";
+import { backendFileUrl } from "@/lib/backend/public-url";
 
 interface NavItem {
   name: string;
@@ -302,10 +303,35 @@ export default function DashboardLayout({
 
           {/* User info and logout */}
           <div className="p-4 border-t border-border">
-            <div className="mb-4">
-              <p className="text-sm font-medium text-foreground">{user?.name}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setSidebarOpen(false)}
+                  className="mb-4 flex items-center gap-3 rounded-xl p-1.5 -m-1.5 transition-colors hover:bg-muted"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground">
+                    {user?.profilePhotoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={backendFileUrl(user.profilePhotoUrl) ?? undefined}
+                        alt={user.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs font-semibold uppercase">
+                        {user?.name?.charAt(0) ?? "?"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{user?.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="top">Modifier mon profil</TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

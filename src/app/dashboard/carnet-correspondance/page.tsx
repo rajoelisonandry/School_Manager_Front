@@ -361,7 +361,7 @@ export default function CarnetCorrespondancePage() {
           <CardContent>
             {selectedStudent ? (
               <div className="space-y-4">
-                <div className="mx-auto flex h-32 w-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted">
+                <div className="mx-auto flex h-32 w-28 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted">
                   {selectedStudent.identityPhotoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

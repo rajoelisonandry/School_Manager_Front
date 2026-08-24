@@ -294,7 +294,10 @@ async function drawCoverPage(
   // Photo d'identité : ni fond ni contour, juste la photo (coins arrondis par découpe)
   // ou, à défaut, un léger texte indicatif.
   const baseBlockH = contentH * 0.25;
-  const photoTopPad = 4;
+  // Marge réduite (4 -> 3) au-dessus/en dessous de la photo pour lui laisser un peu
+  // plus de largeur, sans empiéter sur la fiche ni sur le bloc "année scolaire" ancré
+  // en bas de page.
+  const photoTopPad = 3;
   const baseMaxPhotoH = baseBlockH - photoTopPad * 2;
   // Photo agrandie de 30% par rapport à la taille d'origine ; le bloc qui lui est
   // réservé grandit d'autant pour ne pas empiéter sur les sections voisines.

@@ -77,6 +77,11 @@ interface ClassOption {
 const ALL_CLASSES = "all";
 const ALL_YEARS = "all";
 
+// Largeur / hauteur de la boîte photo dans les PDF (carnet de correspondance,
+// carte d'identité scolaire) : sert à cadrer la photo d'identité à l'envoi pour
+// que l'aperçu du recadrage corresponde au rendu final dans les documents.
+const ID_PHOTO_ASPECT_RATIO = 0.78;
+
 const emptyFormData: Partial<Student> = {
   matricule: "",
   firstName: "",
@@ -695,6 +700,7 @@ export default function StudentsPage() {
                   value={formData.identityPhotoUrl ?? ""}
                   onChange={(url) => setFormData((prev) => ({ ...prev, identityPhotoUrl: url }))}
                   uploadAction={uploadStudentDocument}
+                  cropAspectRatio={ID_PHOTO_ASPECT_RATIO}
                 />
                 <DocumentUploadField
                   label="Bulletin de naissance"
@@ -831,9 +837,15 @@ export default function StudentsPage() {
                             <img
                               src={backendFileUrl(doc.url) ?? undefined}
                               alt={doc.label}
-                              className="h-16 w-16 rounded-md object-cover border border-border"
+                              className={`h-16 rounded-md object-cover border border-border ${
+                                doc.label === "Photo d'identité" ? "w-20" : "w-16"
+                              }`}
                             />
-                            <span className="text-xs text-muted-foreground max-w-16 text-center">
+                            <span
+                              className={`text-xs text-muted-foreground text-center ${
+                                doc.label === "Photo d'identité" ? "max-w-20" : "max-w-16"
+                              }`}
+                            >
                               {doc.label}
                             </span>
                           </a>

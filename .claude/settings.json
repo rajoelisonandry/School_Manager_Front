@@ -15,7 +15,10 @@
       "Bash(node -e \"const m = require\\('lucide-react'\\); console.log\\(['ClipboardList','NotebookPen','Save','GraduationCap','ListChecks','Award','Trophy'].map\\(k => k + ': ' + \\(k in m\\)\\).join\\('\\\\n'\\)\\)\")",
       "Bash(npx next *)",
       "Bash(node -e ' *)",
-      "Bash(node scripts/import-neon-backup.js scripts/abe-backup-2026-08-10-21-07-26.sql)"
+      "Bash(node scripts/import-neon-backup.js scripts/abe-backup-2026-08-10-21-07-26.sql)",
+      "PowerShell(gcloud run services describe abe-backend --region=us-east1 --format=\"yaml\\(status.conditions,status.latestReadyRevisionName,status.latestCreatedRevisionName,status.traffic\\)\" 2>&1)",
+      "Read(//c/Users/DCI/AppData/Local/Temp/claude/**)",
+      "Bash(command -v pdftoppm)"
     ],
     "additionalDirectories": [
       "c:\\Project\\ABE\\ABE_project_back\\src",
@@ -29,7 +32,8 @@
       "c:\\Project\\ABE\\ABE_project_back\\src\\common",
       "c:\\Project\\ABE\\ABE_project_back\\src\\grade\\dto",
       "c:\\Project\\ABE\\ABE_project_back\\src\\grade",
-      "c:\\Project\\ABE\\ABE_project_back\\src\\student"
+      "c:\\Project\\ABE\\ABE_project_back\\src\\student",
+      "c:\\Project\\ABE\\ABE_project_back\\src\\user\\dto"
     ]
   }
 }

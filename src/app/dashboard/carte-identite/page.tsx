@@ -17,10 +17,10 @@ import {
 } from "@/components/ui/tooltip";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileDown, IdCard, Info, Loader2, User } from "lucide-react";
+import { FileDown, IdCard, Info, Loader2, User, Users } from "lucide-react";
 import { getStudents } from "../students/actions";
 import { getClasses } from "../classes/actions";
-import { exportCarteIdentitePdf } from "@/lib/pdf/carte-identite-pdf";
+import { exportCarteIdentitePdf, exportCarteIdentiteClassePdf } from "@/lib/pdf/carte-identite-pdf";
 import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
 import { PageHeaderSkeleton } from "@/components/loading-skeletons";
@@ -54,6 +54,7 @@ export default function CarteIdentitePage() {
   const [studentId, setStudentId] = useState("");
   const [schoolYear, setSchoolYear] = useState(currentSchoolYear());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingClass, setIsGeneratingClass] = useState(false);
 
   useEffect(() => {
     Promise.all([getStudents(), getClasses()]).then(([s, c]) => {
@@ -68,6 +69,7 @@ export default function CarteIdentitePage() {
 
   const selectedStudent = students.find((s) => s.id === studentId) ?? null;
   const selectedClassName = classes.find((c) => c.id === selectedStudent?.classId)?.name ?? "-";
+  const filterClassName = classes.find((c) => c.id === classFilter)?.name ?? "-";
 
   const handleClassFilterChange = (value: string) => {
     setClassFilter(value);
@@ -99,6 +101,29 @@ export default function CarteIdentitePage() {
       );
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateClass = async () => {
+    if (classFilter === ALL_CLASSES || studentsForSelect.length === 0) return;
+    setIsGeneratingClass(true);
+    try {
+      await exportCarteIdentiteClassePdf(
+        studentsForSelect.map((student) => ({
+          matricule: student.matricule,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          dateOfBirth: student.dateOfBirth,
+          gender: student.gender,
+          address: student.address,
+          phones: student.phones,
+          identityPhotoUrl: backendFileUrl(student.identityPhotoUrl) ?? undefined,
+        })),
+        filterClassName,
+        schoolYear
+      );
+    } finally {
+      setIsGeneratingClass(false);
     }
   };
 
@@ -196,27 +221,58 @@ export default function CarteIdentitePage() {
               </Select>
             </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-block">
-                  <Button
-                    onClick={handleGenerate}
-                    disabled={!selectedStudent || isGenerating}
-                    className="gap-2"
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileDown className="h-4 w-4" />
-                    )}
-                    {isGenerating ? "Génération..." : "Générer le PDF"}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                PDF au format carte (85,6 × 54 mm) : recto identité, verso QR code et signatures
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex flex-wrap gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-block">
+                    <Button
+                      onClick={handleGenerate}
+                      disabled={!selectedStudent || isGenerating}
+                      className="gap-2"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileDown className="h-4 w-4" />
+                      )}
+                      {isGenerating ? "Génération..." : "Générer le PDF"}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  PDF au format carte (85,6 × 54 mm) : recto identité, verso QR code et signatures
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-block">
+                    <Button
+                      variant="outline"
+                      onClick={handleGenerateClass}
+                      disabled={
+                        classFilter === ALL_CLASSES ||
+                        studentsForSelect.length === 0 ||
+                        isGeneratingClass
+                      }
+                      className="gap-2"
+                    >
+                      {isGeneratingClass ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Users className="h-4 w-4" />
+                      )}
+                      {isGeneratingClass ? "Génération..." : "Exporter la classe"}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-56">
+                  {classFilter === ALL_CLASSES
+                    ? "Sélectionnez une classe pour exporter les cartes de tous ses élèves"
+                    : `Un seul PDF A4 pour les ${studentsForSelect.length} élève(s) de ${filterClassName}, plusieurs cartes par page pour limiter le gaspillage de papier`}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </CardContent>
         </Card>
 
@@ -227,7 +283,7 @@ export default function CarteIdentitePage() {
           <CardContent>
             {selectedStudent ? (
               <div className="space-y-4">
-                <div className="mx-auto flex h-24 w-20 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted">
+                <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted">
                   {selectedStudent.identityPhotoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

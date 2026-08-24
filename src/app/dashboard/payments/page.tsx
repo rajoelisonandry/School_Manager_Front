@@ -70,6 +70,7 @@ interface Payment {
   paymentTypeId: string;
   paymentTypeName: string;
   recordedByName: string | null;
+  recordedByGender: string | null;
   month: string;
   year: number;
   amountPaid: number;
@@ -129,6 +130,15 @@ const emptyFormData = {
 
 function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
+}
+
+// "Mme Prénom" / "M. Prénom" quand le genre du compte est renseigné, sinon juste
+// le prénom (comptes existants, créés avant l'ajout de ce champ).
+function recordedByLabel(name: string | null, gender: string | null) {
+  const firstName = name?.split(" ")[0] ?? "-";
+  if (gender === "F") return `Mme ${firstName}`;
+  if (gender === "M") return `Mr ${firstName}`;
+  return firstName;
 }
 
 function ReceiptCopy({
@@ -219,7 +229,7 @@ function ReceiptCopy({
       <div className="my-2.5 border-t border-dashed border-foreground/30" />
 
       <p className="text-center text-[10px] text-muted-foreground">
-        Enregistré par {first.recordedByName ?? "-"}
+        Enregistré par {recordedByLabel(first.recordedByName, first.recordedByGender)}
       </p>
 
       <div className="my-2.5 border-t border-dashed border-foreground/30" />

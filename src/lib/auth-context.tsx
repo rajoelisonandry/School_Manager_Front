@@ -8,7 +8,9 @@ interface User {
   username: string;
   role: string;
   name: string;
+  gender: string;
   email: string;
+  profilePhotoUrl: string;
 }
 
 interface AuthContextType {
@@ -17,6 +19,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -48,9 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutAction();
   };
 
+  // Après une modification du profil (nom, photo...), pour que la sidebar et le
+  // reste de l'appli reflètent tout de suite les nouvelles infos.
+  const refreshUser = async () => {
+    const refreshed = await getCurrentUser();
+    setUser(refreshed);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, isAuthenticated: !!user, isLoading }}
+      value={{ user, login, logout, isAuthenticated: !!user, isLoading, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

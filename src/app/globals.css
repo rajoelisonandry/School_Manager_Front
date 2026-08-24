@@ -130,8 +130,15 @@
 }
 
 @media print {
+  /* Taille de page physique explicite (rouleau thermique 80 mm) : sans elle, le
+     navigateur suppose A4/Letter et laisse le pilote d'imprimante "adapter à la
+     page", avec un facteur d'échelle qui varie d'une imprimante à l'autre — d'où
+     une police tantôt normale, tantôt beaucoup trop grosse. En fixant la taille de
+     page ici, tout le monde imprime au même corps de texte quel que soit le pilote.
+     (Seul le reçu de paiement utilise l'impression navigateur dans l'appli.) */
   @page {
-    margin: 6mm;
+    size: 80mm auto;
+    margin: 0;
   }
 
   /* Retire tout le tableau de bord du flux (évite les pages blanches en trop). */
@@ -150,8 +157,11 @@
     visibility: visible;
   }
   body.print-receipt #payment-receipt {
-    max-width: 300px;
+    box-sizing: border-box;
+    width: 72mm;
+    max-width: 72mm;
     margin: 0;
+    padding: 4mm;
     background: #fff !important;
     color: #000 !important;
   }

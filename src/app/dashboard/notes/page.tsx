@@ -87,6 +87,48 @@ const NEW_SESSION = "__new__";
 // Sentinelle du sélecteur d'élève dans le popup d'export : exporte toute la classe.
 const ALL_STUDENTS = "__all__";
 
+type StudentSortBy = "numero" | "nom";
+type BulletinSortBy = "numero" | "rang" | "nom";
+
+// "Numéro" = matricule, comparé numériquement (ex: 9 avant 10) plutôt qu'en texte
+// brut ("10" < "9" en comparaison de chaînes classique).
+function compareMatricule(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true });
+}
+
+function compareName(a: { lastName: string; firstName: string }, b: { lastName: string; firstName: string }): number {
+  return a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName);
+}
+
+function sortStudents<T extends { matricule: string; lastName: string; firstName: string }>(
+  list: T[],
+  sortBy: StudentSortBy
+): T[] {
+  const sorted = [...list];
+  if (sortBy === "nom") {
+    sorted.sort(compareName);
+  } else {
+    sorted.sort((a, b) => compareMatricule(a.matricule, b.matricule));
+  }
+  return sorted;
+}
+
+function sortBulletins<T extends { matricule: string; lastName: string; firstName: string; rank: number | null }>(
+  list: T[],
+  sortBy: BulletinSortBy
+): T[] {
+  const sorted = [...list];
+  if (sortBy === "nom") {
+    sorted.sort(compareName);
+  } else if (sortBy === "rang") {
+    // Rang croissant (1er en premier) ; les élèves sans rang (pas encore de note) à la fin.
+    sorted.sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
+  } else {
+    sorted.sort((a, b) => compareMatricule(a.matricule, b.matricule));
+  }
+  return sorted;
+}
+
 // Le backend renvoie le corps brut de l'erreur dans le message (ex: '... 404: {"message":"..."}')
 function extractErrorMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
@@ -130,10 +172,12 @@ export default function NotesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [studentsSortBy, setStudentsSortBy] = useState<StudentSortBy>("numero");
 
   // Bulletins
   const [bulletinClassId, setBulletinClassId] = useState("");
   const [bulletinTrimester, setBulletinTrimester] = useState("1");
+  const [bulletinsSortBy, setBulletinsSortBy] = useState<BulletinSortBy>("numero");
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [isLoadingBulletins, setIsLoadingBulletins] = useState(false);
   const [showGradeDetails, setShowGradeDetails] = useState(false);
@@ -161,6 +205,8 @@ export default function NotesPage() {
 
   const subjectsForClass = subjects.filter((s) => s.classIds.includes(classId));
   const studentsForClass = students.filter((s) => s.classId === classId && s.status === "active");
+  const sortedStudentsForClass = sortStudents(studentsForClass, studentsSortBy);
+  const sortedBulletins = sortBulletins(bulletins, bulletinsSortBy);
   // Colonnes communes (DS1, DS2, ...) pour l'aperçu détaillé à l'écran, alignées sur
   // celles utilisées dans l'export PDF détaillé.
   const dsLabels = collectDsLabels(bulletins);
@@ -487,6 +533,21 @@ export default function NotesPage() {
             </p>
           ) : (
             <div className="space-y-3">
+              <div className="flex items-center justify-end gap-2">
+                <label className="text-sm text-muted-foreground">Trier par</label>
+                <Select
+                  value={studentsSortBy}
+                  onValueChange={(v) => setStudentsSortBy(v as StudentSortBy)}
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="numero">Numéro</SelectItem>
+                    <SelectItem value="nom">Nom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="overflow-x-auto rounded-md border border-border">
                 <Table>
                   <TableHeader>
@@ -498,7 +559,7 @@ export default function NotesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {studentsForClass.map((student) => {
+                    {sortedStudentsForClass.map((student) => {
                       // Une note déjà enregistrée ne peut être corrigée ou supprimée
                       // que par un administrateur (ex: en cas de réclamation) ; la
                       // saisie d'une note qui n'existe pas encore reste ouverte à tous.
@@ -658,7 +719,7 @@ export default function NotesPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-2">
               <label className="text-sm font-medium">Classe</label>
               <Select value={bulletinClassId} onValueChange={setBulletinClassId}>
@@ -686,6 +747,22 @@ export default function NotesPage() {
                       {t.label}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Trier par</label>
+              <Select
+                value={bulletinsSortBy}
+                onValueChange={(v) => setBulletinsSortBy(v as BulletinSortBy)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="numero">Numéro</SelectItem>
+                  <SelectItem value="rang">Rang</SelectItem>
+                  <SelectItem value="nom">Nom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -723,7 +800,7 @@ export default function NotesPage() {
             </p>
           ) : showGradeDetails ? (
             <div className="space-y-4">
-              {bulletins.map((b) => (
+              {sortedBulletins.map((b) => (
                 <div key={b.studentId} className="rounded-md border border-border p-3 space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
@@ -796,7 +873,7 @@ export default function NotesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bulletins.map((b) => (
+                  {sortedBulletins.map((b) => (
                     <TableRow key={b.studentId}>
                       <TableCell className="text-muted-foreground">{b.matricule}</TableCell>
                       <TableCell className="font-medium">

@@ -7,8 +7,10 @@ interface BackendUser {
   id: number
   username: string
   name: string
+  gender: string | null
   email: string
   role: string
+  profilePhotoUrl: string | null
   createdAt: string
 }
 
@@ -16,8 +18,10 @@ export interface SessionUser {
   id: string
   username: string
   name: string
+  gender: string
   email: string
   role: string
+  profilePhotoUrl: string
 }
 
 function toSessionUser(user: BackendUser): SessionUser {
@@ -25,8 +29,10 @@ function toSessionUser(user: BackendUser): SessionUser {
     id: String(user.id),
     username: user.username,
     name: user.name,
+    gender: user.gender ?? '',
     email: user.email,
     role: user.role,
+    profilePhotoUrl: user.profilePhotoUrl ?? '',
   }
 }
 

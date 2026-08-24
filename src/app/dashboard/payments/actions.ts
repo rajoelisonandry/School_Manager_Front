@@ -19,6 +19,7 @@ interface BackendPayment {
   recordedBy: {
     id: number
     name: string
+    gender: string | null
   } | null
   month: string
   year: number
@@ -63,6 +64,7 @@ function toFrontPayment(payment: BackendPayment) {
     paymentTypeId: String(payment.paymentType.id),
     paymentTypeName: payment.paymentType.name,
     recordedByName: payment.recordedBy?.name ?? null,
+    recordedByGender: payment.recordedBy?.gender ?? null,
     month: payment.month,
     year: payment.year,
     amountPaid: payment.amountPaid,

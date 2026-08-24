@@ -35,7 +35,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Plus, Pencil, Trash2, Search, Shield, UserCog, Info } from "lucide-react";
-import { getUsers, createUser, updateUser, deleteUser } from "./actions";
+import { getUsers, createUser, updateUser, deleteUser, uploadUserPhoto } from "./actions";
+import { DocumentUploadField } from "@/components/document-upload-field";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
 
@@ -45,7 +46,9 @@ interface User {
   password?: string;
   role: string;
   name: string;
+  gender?: string;
   email: string;
+  profilePhotoUrl?: string;
   createdAt: string;
 }
 
@@ -54,7 +57,9 @@ const emptyFormData: Partial<User> = {
   password: "",
   role: "contributor",
   name: "",
+  gender: "",
   email: "",
+  profilePhotoUrl: "",
 };
 
 export default function UsersPage() {
@@ -130,7 +135,9 @@ export default function UsersPage() {
       password: "",
       role: user.role,
       name: user.name,
+      gender: user.gender ?? "",
       email: user.email,
+      profilePhotoUrl: user.profilePhotoUrl ?? "",
     });
     setIsDialogOpen(true);
   };
@@ -200,6 +207,14 @@ export default function UsersPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
+                <DocumentUploadField
+                  label="Photo de profil"
+                  value={formData.profilePhotoUrl ?? ""}
+                  onChange={(url) =>
+                    setFormData((prev) => ({ ...prev, profilePhotoUrl: url }))
+                  }
+                  uploadAction={uploadUserPhoto}
+                />
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
                     Nom Complet<span className="text-destructive">*</span>
@@ -210,6 +225,32 @@ export default function UsersPage() {
                     onChange={handleInputChange}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    Genre
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-56">
+                        Sert à afficher « Mr » ou « Mme » devant le prénom sur les
+                        documents (ex: reçu de paiement)
+                      </TooltipContent>
+                    </Tooltip>
+                  </label>
+                  <Select
+                    value={formData.gender || undefined}
+                    onValueChange={(value) => handleSelectChange("gender", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Non renseigné" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="M">Homme</SelectItem>
+                      <SelectItem value="F">Femme</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
