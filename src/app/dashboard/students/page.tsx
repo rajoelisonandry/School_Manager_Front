@@ -34,11 +34,29 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Pencil, Trash2, Search, X, Eye, Info, UserX, FileDown, Users } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  X,
+  Eye,
+  Info,
+  UserX,
+  FileDown,
+  Users,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { getStudents, createStudent, updateStudent, deleteStudent, uploadStudentDocument } from "./actions";
 import { getClasses } from "../classes/actions";
 import { getPayments } from "../payments/actions";
-import { exportStudentsPdf } from "@/lib/pdf/students-pdf";
+import {
+  exportStudentsPdf,
+  EXPORT_COLUMNS,
+  DEFAULT_EXPORT_COLUMNS,
+  type ColumnKey,
+} from "@/lib/pdf/students-pdf";
 import { DocumentUploadField } from "@/components/document-upload-field";
 import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
@@ -119,6 +137,10 @@ export default function StudentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportColumns, setExportColumns] = useState<ColumnKey[]>(DEFAULT_EXPORT_COLUMNS);
+  const [blankColumns, setBlankColumns] = useState<string[]>([]);
+  const [newBlankColumnTitle, setNewBlankColumnTitle] = useState("");
 
   useEffect(() => {
     loadData();
@@ -272,8 +294,40 @@ export default function StudentsPage() {
     exportStudentsPdf(
       filteredStudents,
       classes,
-      classFilter === ALL_CLASSES ? null : classFilter
+      classFilter === ALL_CLASSES ? null : classFilter,
+      exportColumns,
+      blankColumns
     );
+    setIsExportDialogOpen(false);
+  };
+
+  const addExportColumn = (key: ColumnKey) => {
+    setExportColumns((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  };
+
+  const removeExportColumn = (key: ColumnKey) => {
+    setExportColumns((prev) => prev.filter((k) => k !== key));
+  };
+
+  const moveExportColumn = (index: number, direction: -1 | 1) => {
+    setExportColumns((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleAddBlankColumn = () => {
+    const title = newBlankColumnTitle.trim();
+    if (!title) return;
+    setBlankColumns((prev) => [...prev, title]);
+    setNewBlankColumnTitle("");
+  };
+
+  const handleRemoveBlankColumn = (index: number) => {
+    setBlankColumns((prev) => prev.filter((_, i) => i !== index));
   };
 
   const renderStudentsTable = (list: Student[], showClassColumn: boolean) => (
@@ -871,6 +925,144 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Personnaliser l&apos;export PDF</DialogTitle>
+            <DialogDescription>
+              Choisissez les colonnes à inclure et leur ordre, et ajoutez éventuellement
+              des colonnes vides à remplir à la main après impression.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <div>
+              <h3 className="text-sm font-medium mb-2">Colonnes (dans l&apos;ordre d&apos;impression)</h3>
+              <div className="space-y-1.5">
+                {exportColumns.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Aucune colonne sélectionnée.</p>
+                )}
+                {exportColumns.map((key, index) => {
+                  const col = EXPORT_COLUMNS.find((c) => c.key === key);
+                  if (!col) return null;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-1 rounded-md border border-input px-2 py-1.5 text-sm"
+                    >
+                      <span className="flex-1">{col.label}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={index === 0}
+                        onClick={() => moveExportColumn(index, -1)}
+                        aria-label={`Monter ${col.label}`}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={index === exportColumns.length - 1}
+                        onClick={() => moveExportColumn(index, 1)}
+                        aria-label={`Descendre ${col.label}`}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={() => removeExportColumn(key)}
+                        aria-label={`Retirer ${col.label}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {EXPORT_COLUMNS.some((c) => !exportColumns.includes(c.key)) && (
+                <div className="mt-3">
+                  <p className="text-xs text-muted-foreground mb-1.5">Ajouter une colonne :</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {EXPORT_COLUMNS.filter((c) => !exportColumns.includes(c.key)).map((col) => (
+                      <button
+                        key={col.key}
+                        type="button"
+                        onClick={() => addExportColumn(col.key)}
+                        className="rounded-full border border-dashed border-input px-3 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary"
+                      >
+                        + {col.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium mb-2">Colonnes vides (à remplir à la main)</h3>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Titre de la colonne (ex: Signature)"
+                  value={newBlankColumnTitle}
+                  onChange={(e) => setNewBlankColumnTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddBlankColumn();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={handleAddBlankColumn}>
+                  Ajouter
+                </Button>
+              </div>
+              {blankColumns.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {blankColumns.map((title, index) => (
+                    <span
+                      key={`${title}-${index}`}
+                      className="flex items-center gap-1 rounded-full border border-input bg-muted px-3 py-1 text-xs"
+                    >
+                      {title}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveBlankColumn(index)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`Retirer la colonne ${title}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleExportPdf}
+              disabled={exportColumns.length === 0 && blankColumns.length === 0}
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Générer le PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -925,7 +1117,7 @@ export default function StudentsPage() {
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
-                    onClick={handleExportPdf}
+                    onClick={() => setIsExportDialogOpen(true)}
                     disabled={filteredStudents.length === 0}
                   >
                     <FileDown className="h-4 w-4 mr-2" />

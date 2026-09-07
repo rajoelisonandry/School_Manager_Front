@@ -18,7 +18,9 @@
       "Bash(node scripts/import-neon-backup.js scripts/abe-backup-2026-08-10-21-07-26.sql)",
       "PowerShell(gcloud run services describe abe-backend --region=us-east1 --format=\"yaml\\(status.conditions,status.latestReadyRevisionName,status.latestCreatedRevisionName,status.traffic\\)\" 2>&1)",
       "Read(//c/Users/DCI/AppData/Local/Temp/claude/**)",
-      "Bash(command -v pdftoppm)"
+      "Bash(command -v pdftoppm)",
+      "PowerShell(gcloud config list 2>&1)",
+      "PowerShell(gcloud run services describe abe-backend --region=us-east1 --format=\"value\\(spec.template.spec.containers[0].env[].name\\)\" 2>&1)"
     ],
     "additionalDirectories": [
       "c:\\Project\\ABE\\ABE_project_back\\src",
