@@ -100,11 +100,12 @@ const LIGHT_ACCENT: [number, number, number] = ACCENT.map((c) =>
   Math.round(c + (255 - c) * 0.82)
 ) as [number, number, number];
 
-const BODY_FONT_SIZE = 14;
-const HEADER_ROW_FONT_SIZE = 11;
-const HOUR_COLUMN_FONT_SIZE = 11;
+const BODY_FONT_SIZE = 15; // matières (contenu des lignes horaires)
+const DIVIDER_FONT_SIZE = 14; // "RÉCRÉATION" / "APRÈS-MIDI"
+const DAY_HEADER_FONT_SIZE = 12; // Lundi..Samedi (tête de colonnes)
+const HOUR_COLUMN_FONT_SIZE = 11; // "Horaire" (tête et corps de la 1ère colonne)
 const DEFAULT_ROW_PADDING = 4;
-const MIN_ROW_PADDING = 0.5;
+const MIN_ROW_PADDING = 0.25;
 const DIVIDER_PADDING = 1.5;
 // Marge de sécurité sur l'estimation de hauteur de ligne (le facteur d'interligne
 // réel de jsPDF peut légèrement différer de l'approximation ci-dessous).
@@ -124,9 +125,11 @@ function computeRowPadding(doc: jsPDF, tableStartY: number, hourRowMaxLines: num
   const bottomMargin = 6;
   const availableHeight = pageHeight - bottomMargin - tableStartY;
 
-  const headerRowHeight = mmLineHeight(HEADER_ROW_FONT_SIZE) + 2 * DEFAULT_ROW_PADDING;
+  // DAY_HEADER_FONT_SIZE (Lundi..Samedi) est la plus grande police de la ligne
+  // d'en-tête, donc celle qui détermine sa hauteur réelle.
+  const headerRowHeight = mmLineHeight(DAY_HEADER_FONT_SIZE) + 2 * DEFAULT_ROW_PADDING;
   const dividerCount = ROWS.filter((r) => r.type === "divider").length;
-  const dividerRowHeight = mmLineHeight(BODY_FONT_SIZE) + 2 * DIVIDER_PADDING;
+  const dividerRowHeight = mmLineHeight(DIVIDER_FONT_SIZE) + 2 * DIVIDER_PADDING;
 
   const remainingForHourRows =
     availableHeight - headerRowHeight - dividerCount * dividerRowHeight;
@@ -165,6 +168,7 @@ function drawGroupPage(
             fontStyle: "bold" as const,
             textColor: BLACK,
             fillColor: LIGHT_ACCENT,
+            fontSize: DIVIDER_FONT_SIZE,
             cellPadding: { top: DIVIDER_PADDING, bottom: DIVIDER_PADDING, left: 2, right: 2 },
           },
         },
@@ -194,14 +198,20 @@ function drawGroupPage(
       fillColor: false,
       textColor: BLACK,
       fontStyle: "bold",
+      // Traits bien visibles, comme le filet de l'entête (drawCompactHeader).
       lineWidth: 0.3,
       lineColor: BLACK,
       halign: "center",
+      // Lundi..Samedi ; "Horaire" (colonne 0) garde sa propre taille via
+      // columnStyles, qui a priorité sur ce réglage pour cette colonne.
+      fontSize: DAY_HEADER_FONT_SIZE,
     },
     bodyStyles: {
       fillColor: false,
-      lineWidth: 0.15,
-      lineColor: [200, 200, 200],
+      // Traits bien visibles, comme le filet de l'entête (drawCompactHeader) —
+      // même largeur et même couleur, plutôt que le gris clair précédent.
+      lineWidth: 0.3,
+      lineColor: BLACK,
       halign: "center",
       valign: "middle",
       // Matières en gras et agrandies pour rester lisibles de loin (affichage
@@ -218,7 +228,7 @@ function drawGroupPage(
       // sans que les horaires ("10:00 – 11:15") ne se replient sur 2 lignes.
       0: { cellWidth: 30, fontStyle: "bold", textColor: BLACK, fontSize: HOUR_COLUMN_FONT_SIZE },
     },
-    styles: { fontSize: HEADER_ROW_FONT_SIZE, cellPadding: { top: DEFAULT_ROW_PADDING, bottom: DEFAULT_ROW_PADDING, left: 2, right: 2 } },
+    styles: { fontSize: DAY_HEADER_FONT_SIZE, cellPadding: { top: DEFAULT_ROW_PADDING, bottom: DEFAULT_ROW_PADDING, left: 2, right: 2 } },
     margin: { top: 10, bottom: 6, left: 10, right: 10 },
   });
 }

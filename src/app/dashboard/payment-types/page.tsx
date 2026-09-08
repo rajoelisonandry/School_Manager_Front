@@ -23,17 +23,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Plus, Pencil, Trash2, Wallet, AlertTriangle, Info } from "lucide-react";
 import {
   getPaymentTypes,
@@ -43,7 +44,7 @@ import {
 } from "./actions";
 import { getClasses } from "../classes/actions";
 import { getPaymentTypeRates } from "../payment-type-rates/actions";
-import { currentSchoolYear, schoolYearStart } from "@/lib/school-year";
+import { currentSchoolYear, schoolYearStart, SCHOOL_MONTHS } from "@/lib/school-year";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
 import { getCachedData, setCachedData } from "@/lib/page-data-cache";
@@ -52,13 +53,15 @@ interface PaymentType {
   id: string;
   name: string;
   amount: number;
-  classId: string | null;
-  className: string | null;
+  periodMonths: number | null;
+  classIds: string[];
+  classNames: string[];
 }
 
 interface ClassOption {
   id: string;
   name: string;
+  level: string;
 }
 
 interface RateOption {
@@ -70,15 +73,30 @@ interface RateOption {
 const CURRENT_YEAR = schoolYearStart(currentSchoolYear());
 
 const ALL_CLASSES = "all";
+const NO_PERIOD = "none";
+// Mois sélectionnables pour "période" : dans l'ordre de l'année scolaire (comme
+// le tableau du carnet de correspondance), août exclu car hors année scolaire
+// (une ligne positionnée dessus n'aurait nulle part où s'insérer, voir
+// buildRowSpecs dans carnet-pdf.ts).
+const PERIOD_MONTH_OPTIONS = SCHOOL_MONTHS.filter((m) => m.key !== "aout").map((m) => ({
+  value: String(m.monthIndex + 1),
+  label: m.label,
+}));
 
 const emptyFormData = {
   name: "",
   amount: 0,
-  classId: ALL_CLASSES,
+  periodMonths: "",
+  classIds: [ALL_CLASSES] as string[],
 };
 
 function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
+}
+
+function periodMonthLabel(periodMonths: number | null) {
+  if (periodMonths == null) return "-";
+  return PERIOD_MONTH_OPTIONS.find((m) => m.value === String(periodMonths))?.label ?? "-";
 }
 
 interface PaymentTypesPageCache {
@@ -160,6 +178,22 @@ export default function PaymentTypesPage() {
     }));
   };
 
+  // "Toutes les classes" est une option de plus dans le même sélecteur
+  // multiple, mutuellement exclusive avec les classes précises : la cocher
+  // remplace toute sélection en cours, et cocher une classe précise la
+  // décoche automatiquement.
+  const handleClassSelectionChange = (values: string[]) => {
+    setFormData((prev) => {
+      const wasAllSelected = prev.classIds.includes(ALL_CLASSES);
+      const isAllNowSelected = values.includes(ALL_CLASSES);
+      if (isAllNowSelected && !wasAllSelected) {
+        return { ...prev, classIds: [ALL_CLASSES] };
+      }
+      const specificClassIds = values.filter((v) => v !== ALL_CLASSES);
+      return { ...prev, classIds: specificClassIds.length > 0 ? specificClassIds : [ALL_CLASSES] };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -168,7 +202,8 @@ export default function PaymentTypesPage() {
     const payload = {
       name: formData.name,
       amount: formData.amount,
-      classId: formData.classId === ALL_CLASSES ? null : formData.classId,
+      periodMonths: formData.periodMonths ? Number(formData.periodMonths) : null,
+      classIds: formData.classIds.includes(ALL_CLASSES) ? [] : formData.classIds,
     };
 
     if (editingType) {
@@ -189,7 +224,8 @@ export default function PaymentTypesPage() {
     setFormData({
       name: type.name,
       amount: type.amount,
-      classId: type.classId ?? ALL_CLASSES,
+      periodMonths: type.periodMonths ? String(type.periodMonths) : "",
+      classIds: type.classIds.length > 0 ? type.classIds : [ALL_CLASSES],
     });
     setIsDialogOpen(true);
   };
@@ -208,9 +244,14 @@ export default function PaymentTypesPage() {
     setFormData(emptyFormData);
   };
 
+  const classOptions = [
+    { value: ALL_CLASSES, label: "Toutes les classes" },
+    ...classes.map((cls) => ({ value: cls.id, label: cls.name, group: cls.level })),
+  ];
+
   if (isLoading) {
     return (
-      <PageListSkeleton tableCols={4} tableRows={5} tableHeaderControls={0} withHeaderActionButton />
+      <PageListSkeleton tableCols={5} tableRows={5} tableHeaderControls={0} withHeaderActionButton />
     );
   }
 
@@ -254,51 +295,82 @@ export default function PaymentTypesPage() {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Montant (Ariary)<span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    type="number"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="1"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Montant (Ariary)<span className="text-destructive">*</span>
+                    </label>
+                    <Input
+                      type="number"
+                      name="amount"
+                      value={formData.amount}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="1"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      Mois de la période
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-56">
+                          Mois auquel se rattache ce type de paiement (1 = Janvier ... 12 =
+                          Décembre, ex: 9 pour Septembre). Dans le carnet de correspondance, sa
+                          ligne apparaît juste avant celle de ce mois. Laissez vide s&apos;il ne
+                          doit pas apparaître dans ce tableau (comme l&apos;écolage, déjà suivi
+                          mois par mois)
+                        </TooltipContent>
+                      </Tooltip>
+                    </label>
+                    <Select
+                      value={formData.periodMonths || NO_PERIOD}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          periodMonths: value === NO_PERIOD ? "" : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_PERIOD}>Aucun</SelectItem>
+                        {PERIOD_MONTH_OPTIONS.map((month) => (
+                          <SelectItem key={month.value} value={month.value}>
+                            {month.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-1.5">
-                    Classe concernée
+                    Classes concernées
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-56">
                         Laissez sur &quot;Toutes les classes&quot; si ce type de paiement
-                        s&apos;applique partout avec le même montant par défaut
+                        s&apos;applique partout avec le même montant par défaut, ou
+                        sélectionnez une ou plusieurs classes précises
                       </TooltipContent>
                     </Tooltip>
                   </label>
-                  <Select
-                    value={formData.classId}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, classId: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_CLASSES}>Toutes les classes</SelectItem>
-                      {classes.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <MultiSelect
+                    values={formData.classIds}
+                    onValuesChange={handleClassSelectionChange}
+                    options={classOptions}
+                    placeholder="Sélectionner les classes"
+                    searchPlaceholder="Rechercher une classe..."
+                    emptyMessage="Aucune classe trouvée"
+                  />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
@@ -337,7 +409,21 @@ export default function PaymentTypesPage() {
                     </Tooltip>
                   </div>
                 </TableHead>
-                <TableHead>Classe concernée</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1.5">
+                    Période
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-56">
+                        Mois où ce type de paiement apparaît dans le tableau du carnet de
+                        correspondance
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TableHead>
+                <TableHead>Classes concernées</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -376,7 +462,14 @@ export default function PaymentTypesPage() {
                       formatAriary(amountInfo.amount)
                     )}
                   </TableCell>
-                  <TableCell>{type.className ?? "Toutes les classes"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {periodMonthLabel(type.periodMonths)}
+                  </TableCell>
+                  <TableCell>
+                    {type.classNames.length > 0
+                      ? type.classNames.join(", ")
+                      : "Toutes les classes"}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Tooltip>
@@ -421,7 +514,7 @@ export default function PaymentTypesPage() {
               {paymentTypes.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={5}
                     className="text-center text-muted-foreground py-8"
                   >
                     Aucun type de paiement défini

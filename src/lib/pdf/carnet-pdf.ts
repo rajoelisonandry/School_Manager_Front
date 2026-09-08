@@ -31,12 +31,24 @@ export interface CarnetPaidEntry {
 }
 
 // Paiements déjà encaissés à la date d'export, pour préremplir le tableau au lieu
-// de le laisser entièrement vide : la ligne FG reprend le paiement d'inscription
-// (ou réinscription) de l'élève, et chaque mois d'écolage déjà réglé sa date et
-// son montant. `ecolageByMonth` est indexé par la clé de mois (voir SCHOOL_MONTHS).
+// de le laisser entièrement vide : chaque mois d'écolage déjà réglé avec sa date
+// et son montant (`ecolageByMonth`, indexé par la clé de mois — voir
+// SCHOOL_MONTHS), et pour chaque "autre" type de paiement positionné (voir
+// OtherPaymentType), son propre paiement déjà réglé (`byPaymentTypeId`, indexé
+// par l'ID du type).
 export interface CarnetPaymentSummary {
-  registration?: CarnetPaidEntry;
   ecolageByMonth?: Partial<Record<string, CarnetPaidEntry>>;
+  byPaymentTypeId?: Partial<Record<string, CarnetPaidEntry>>;
+}
+
+// Type de paiement autre que l'écolage (qui reste la série de lignes
+// mensuelles du tableau), positionné dans le tableau de suivi du carnet grâce
+// à periodMonths (mois calendaire 1-12, ex: 9 = septembre) : sa ligne
+// apparaît juste avant la ligne du mois correspondant.
+export interface OtherPaymentType {
+  id: string;
+  name: string;
+  periodMonths: number;
 }
 
 const LIGHT: [number, number, number] = PRIMARY.map((c) =>
@@ -397,12 +409,115 @@ function formatAriary(amount: number) {
   return `${Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}Ar`;
 }
 
+interface CarnetRowSpec {
+  key: string;
+  label: string;
+  paid?: CarnetPaidEntry;
+}
+
+// Construit dynamiquement les lignes du tableau : les mensualités d'écolage
+// (de septembre à juillet, le mois d'août étant hors année scolaire) encadrées
+// par les "autres" types de paiement (voir OtherPaymentType) — chacun inséré
+// juste avant la ligne du mois indiqué par son periodMonths (mois calendaire
+// 1-12). Plusieurs types visant le même mois s'empilent dans leur ordre
+// d'origine (déjà alphabétique, voir getPaymentTypes) ; un periodMonths hors
+// année scolaire (ex: août, ou une valeur invalide) atterrit en fin de tableau
+// plutôt que d'être perdu silencieusement.
+function buildRowSpecs(
+  otherPaymentTypes: OtherPaymentType[],
+  paymentSummary: CarnetPaymentSummary
+): CarnetRowSpec[] {
+  const byCalendarMonth = new Map<number, OtherPaymentType[]>();
+  const outOfRange: OtherPaymentType[] = [];
+  for (const type of otherPaymentTypes) {
+    const isInSchoolYear = SCHOOL_MONTHS.some(
+      (m) => m.key !== "aout" && m.monthIndex + 1 === type.periodMonths
+    );
+    if (!isInSchoolYear) {
+      outOfRange.push(type);
+      continue;
+    }
+    const list = byCalendarMonth.get(type.periodMonths) ?? [];
+    list.push(type);
+    byCalendarMonth.set(type.periodMonths, list);
+  }
+
+  const toRow = (type: OtherPaymentType): CarnetRowSpec => ({
+    key: `type-${type.id}`,
+    label: type.name,
+    paid: paymentSummary.byPaymentTypeId?.[type.id],
+  });
+
+  const rows: CarnetRowSpec[] = [];
+  for (const month of SCHOOL_MONTHS) {
+    if (month.key === "aout") continue;
+    for (const type of byCalendarMonth.get(month.monthIndex + 1) ?? []) {
+      rows.push(toRow(type));
+    }
+    rows.push({ key: month.key, label: month.label, paid: paymentSummary.ecolageByMonth?.[month.key] });
+  }
+  for (const type of outOfRange) rows.push(toRow(type));
+
+  return rows;
+}
+
+const TABLE_DEFAULT_FONT_SIZE = 9;
+const TABLE_DEFAULT_PADDING = 1.5;
+const TABLE_MIN_FONT_SIZE = 5;
+const TABLE_MIN_PADDING = 0.4;
+// Marge de sécurité sur l'estimation de hauteur de ligne (le facteur d'interligne
+// réel de jsPDF peut légèrement différer de l'approximation ci-dessous).
+const TABLE_ROW_HEIGHT_SAFETY = 1.08;
+
+function estimateTableRowHeight(fontSize: number, padding: number) {
+  return (fontSize * 1.15 * 0.3528 + padding * 2) * TABLE_ROW_HEIGHT_SAFETY;
+}
+
+interface TableStyle {
+  fontSize: number;
+  cellPadding: number;
+  rowHeight: number;
+}
+
+// Calcule la police, le remplissage et la hauteur de ligne du tableau pour
+// qu'il occupe toute la hauteur disponible : peu de lignes (peu de types de
+// paiement positionnés) → les lignes s'étirent pour couvrir la page ; beaucoup
+// de lignes → la police et le remplissage se resserrent (jusqu'à un plancher
+// lisible) pour que le tableau tienne toujours sur cette seule page, plutôt
+// que de déborder sur une 2ᵉ page.
+function computeTableStyle(rowCount: number, availableHeight: number): TableStyle {
+  const targetRowHeight = availableHeight / rowCount;
+  const naturalRowHeight = estimateTableRowHeight(TABLE_DEFAULT_FONT_SIZE, TABLE_DEFAULT_PADDING);
+
+  if (naturalRowHeight <= targetRowHeight) {
+    return { fontSize: TABLE_DEFAULT_FONT_SIZE, cellPadding: TABLE_DEFAULT_PADDING, rowHeight: targetRowHeight };
+  }
+
+  // Réduit d'abord le remplissage des cellules (police par défaut conservée),
+  // puis seulement si ça ne suffit toujours pas la police elle-même — comme
+  // pour l'emploi du temps (voir timetable-pdf.ts).
+  const paddingForDefaultFont =
+    (targetRowHeight / TABLE_ROW_HEIGHT_SAFETY - TABLE_DEFAULT_FONT_SIZE * 1.15 * 0.3528) / 2;
+  if (paddingForDefaultFont >= TABLE_MIN_PADDING) {
+    return { fontSize: TABLE_DEFAULT_FONT_SIZE, cellPadding: paddingForDefaultFont, rowHeight: targetRowHeight };
+  }
+
+  const fontForMinPadding =
+    (targetRowHeight / TABLE_ROW_HEIGHT_SAFETY - TABLE_MIN_PADDING * 2) / (1.15 * 0.3528);
+  return {
+    fontSize: Math.max(TABLE_MIN_FONT_SIZE, fontForMinPadding),
+    cellPadding: TABLE_MIN_PADDING,
+    rowHeight: targetRowHeight,
+  };
+}
+
 // Tableau vierge de suivi de l'écolage (colonnes mois / date / montant / signature),
 // destiné à être rempli à la main. Occupe la moitié gauche de la page, en miroir de
 // la fiche de renseignements affichée à droite.
 function drawEcolageTable(
   doc: jsPDF,
   ecolageAmount: number,
+  otherPaymentTypes: OtherPaymentType[],
   paymentSummary: CarnetPaymentSummary
 ) {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -435,65 +550,46 @@ function drawEcolageTable(
   doc.setTextColor(...PRIMARY);
   doc.text(`ÉCOLAGE : ${formatAriary(ecolageAmount)}`, contentX, contentTop + 15);
 
-  // Libellés des lignes : les frais annuels (fournitures, excursion, fête...)
-  // encadrent les mensualités de l'écolage, de septembre à juillet (le mois
-  // d'août, hors année scolaire, est exclu). "fg" reprend le paiement
-  // d'inscription/réinscription de l'élève s'il a déjà été réglé ; chaque ligne
-  // de mois reprend le paiement d'écolage correspondant s'il a déjà été réglé.
-  const monthLabel = (key: string) => SCHOOL_MONTHS.find((m) => m.key === key)!.label;
-  const rowSpecs: { key: string; label: string }[] = [
-    { key: "rampapier", label: "RAM PAPIER" },
-    { key: "pcchemise", label: "PC+C CHEMISE" },
-    { key: "fg", label: "FG" },
-    { key: "septembre", label: monthLabel("septembre") },
-    { key: "octobre", label: monthLabel("octobre") },
-    { key: "novembre", label: monthLabel("novembre") },
-    { key: "decembre", label: monthLabel("decembre") },
-    { key: "gouterdefete", label: "Goûter de fête" },
-    { key: "janvier", label: monthLabel("janvier") },
-    { key: "fevrier", label: monthLabel("fevrier") },
-    { key: "mars", label: monthLabel("mars") },
-    { key: "avril", label: monthLabel("avril") },
-    { key: "mai", label: monthLabel("mai") },
-    { key: "excursion", label: "Excursion" },
-    { key: "juin", label: monthLabel("juin") },
-    { key: "juillet", label: monthLabel("juillet") },
-  ];
+  // Lignes construites dynamiquement (voir buildRowSpecs) : les mensualités
+  // d'écolage encadrées par les "autres" types de paiement positionnés selon
+  // leur periodMonths.
+  const rowSpecs = buildRowSpecs(otherPaymentTypes, paymentSummary);
 
-  const paidEntryFor = (key: string): CarnetPaidEntry | undefined =>
-    key === "fg" ? paymentSummary.registration : paymentSummary.ecolageByMonth?.[key];
-
-  // Hauteur de ligne calculée pour que le tableau (en-tête compris) occupe
-  // l'essentiel de l'espace restant, avec une petite marge de sécurité pour
-  // ne jamais déborder sur une nouvelle page (bordures, arrondis d'affichage).
+  // Police, remplissage et hauteur de ligne calculés pour que le tableau
+  // (en-tête compris) occupe tout l'espace restant quel que soit le nombre de
+  // lignes — avec une petite marge de sécurité pour ne jamais déborder sur une
+  // nouvelle page (bordures, arrondis d'affichage) : voir computeTableStyle.
   const tableY = contentTop + 19;
   const safetyMargin = 8;
-  const rowH = (contentBottom - tableY - safetyMargin) / (rowSpecs.length + 1);
+  const availableHeight = contentBottom - tableY - safetyMargin;
+  const tableStyle = computeTableStyle(rowSpecs.length + 1, availableHeight);
 
   autoTable(doc, {
     startY: tableY,
     head: [["Libellé", "Date", "Montant", "Signature"]],
-    body: rowSpecs.map(({ key, label }) => {
-      const paid = paidEntryFor(key);
-      return [label, paid ? formatDate(paid.date) : "", paid ? formatAriary(paid.amount) : "", ""];
-    }),
+    body: rowSpecs.map(({ label, paid }) => [
+      label,
+      paid ? formatDate(paid.date) : "",
+      paid ? formatAriary(paid.amount) : "",
+      "",
+    ]),
     theme: "grid",
     styles: {
       font: "helvetica",
-      fontSize: 9,
-      cellPadding: 1.5,
+      fontSize: tableStyle.fontSize,
+      cellPadding: tableStyle.cellPadding,
       valign: "middle",
       textColor: [0, 0, 0],
       lineColor: [205, 205, 205],
       lineWidth: 0.2,
-      minCellHeight: rowH,
+      minCellHeight: tableStyle.rowHeight,
     },
     headStyles: {
       fillColor: false,
       textColor: PRIMARY,
       fontStyle: "bold",
       halign: "center",
-      minCellHeight: rowH,
+      minCellHeight: tableStyle.rowHeight,
     },
     columnStyles: {
       0: { cellWidth: contentW * 0.3, fontStyle: "bold" },
@@ -515,6 +611,7 @@ function drawInfoPage(
   student: StudentForCarnet,
   className: string,
   ecolageAmount: number,
+  otherPaymentTypes: OtherPaymentType[],
   paymentSummary: CarnetPaymentSummary
 ) {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -523,7 +620,7 @@ function drawInfoPage(
 
   drawFoldGuide(doc, centerX, pageHeight);
 
-  drawEcolageTable(doc, ecolageAmount, paymentSummary);
+  drawEcolageTable(doc, ecolageAmount, otherPaymentTypes, paymentSummary);
 
   const frameX = centerX + 8;
   const frameY = MARGIN;
@@ -622,6 +719,7 @@ export async function exportCarnetCoverPdf(
   schoolYear: string,
   classLevel: string = "",
   ecolageAmount: number = 0,
+  otherPaymentTypes: OtherPaymentType[] = [],
   paymentSummary: CarnetPaymentSummary = {}
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -630,7 +728,7 @@ export async function exportCarnetCoverPdf(
   await drawCoverPage(doc, student, className, schoolYear, classLevel);
 
   doc.addPage("a4", "landscape");
-  drawInfoPage(doc, student, className, ecolageAmount, paymentSummary);
+  drawInfoPage(doc, student, className, ecolageAmount, otherPaymentTypes, paymentSummary);
 
   doc.save(`carnet-${slugify(`${student.lastName}-${student.firstName}`)}.pdf`);
 }

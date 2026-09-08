@@ -137,11 +137,15 @@ export function DocumentUploadField({
           <FileImage className="h-4 w-4 ml-auto" />
         </Button>
       )}
+      {/* Pas d'attribut "capture" : avec, la plupart des navigateurs mobiles
+          (Android Chrome, iOS Safari) ouvrent directement l'appareil photo en
+          court-circuitant le sélecteur natif, empêchant de choisir la galerie
+          — "accept" seul suffit à proposer les deux (Appareil photo / Galerie
+          / Fichiers) sur iOS comme Android. */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleFileChange}
         className="hidden"
       />

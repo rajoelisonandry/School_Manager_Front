@@ -7,32 +7,38 @@ interface BackendPaymentType {
   id: number
   name: string
   amount: number
-  schoolClass?: { id: number; name: string } | null
+  periodMonths: number | null
+  schoolClasses: { id: number; name: string }[]
 }
 
 export interface PaymentTypeInput {
   name: string
   amount: number
-  classId?: string | null
+  // Nombre de mois couverts (positionnement dans le carnet de correspondance).
+  periodMonths?: number | null
+  // Classes concernées ; tableau vide = toutes les classes.
+  classIds: string[]
 }
 
 function toFrontPaymentType(pt: BackendPaymentType) {
+  const schoolClasses = pt.schoolClasses ?? []
   return {
     id: String(pt.id),
     name: pt.name,
     amount: pt.amount,
-    classId: pt.schoolClass ? String(pt.schoolClass.id) : null,
-    className: pt.schoolClass?.name ?? null,
+    periodMonths: pt.periodMonths,
+    classIds: schoolClasses.map((c) => String(c.id)),
+    // Dérivé pour l'affichage dans la liste ("Toutes les classes" si vide).
+    classNames: schoolClasses.map((c) => c.name),
   }
 }
 
 function toBackendPayload(data: Partial<PaymentTypeInput>) {
-  const { classId, ...rest } = data
+  const { classIds, periodMonths, ...rest } = data
   return {
     ...rest,
-    ...(classId !== undefined
-      ? { classId: classId === null || classId === '' ? null : Number(classId) }
-      : {}),
+    ...(classIds !== undefined ? { classIds: classIds.map(Number) } : {}),
+    ...(periodMonths !== undefined ? { periodMonths: periodMonths || null } : {}),
   }
 }
 

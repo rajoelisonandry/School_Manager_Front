@@ -23,7 +23,11 @@ import { getClasses } from "../classes/actions";
 import { getPaymentTypes } from "../payment-types/actions";
 import { getPaymentTypeRates } from "../payment-type-rates/actions";
 import { getPayments } from "../payments/actions";
-import { exportCarnetCoverPdf, type CarnetPaymentSummary } from "@/lib/pdf/carnet-pdf";
+import {
+  exportCarnetCoverPdf,
+  type CarnetPaymentSummary,
+  type OtherPaymentType,
+} from "@/lib/pdf/carnet-pdf";
 import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
 import { PageHeaderSkeleton } from "@/components/loading-skeletons";
@@ -67,6 +71,9 @@ interface PaymentTypeOption {
   id: string;
   name: string;
   amount: number;
+  periodMonths: number | null;
+  // Classes concernées ; vide = toutes les classes (voir payment-types/actions.ts).
+  classIds: string[];
 }
 
 interface PaymentTypeRate {
@@ -86,9 +93,6 @@ interface Payment {
 }
 
 const ALL_CLASSES = "all";
-// Certains élèves paient "Inscription" (nouvel élève), d'autres "Réinscription"
-// (élève déjà présent l'année précédente) : les deux valent pour la ligne FG.
-const REGISTRATION_TYPE_NAMES = ["inscription", "reinscription"];
 
 interface CarnetPageCache {
   students: Student[];
@@ -169,9 +173,28 @@ export default function CarnetCorrespondancePage() {
     return rate?.amount ?? ecolageType.amount ?? 0;
   }, [paymentTypes, paymentTypeRates, selectedClass, schoolYear]);
 
+  // Types de paiement positionnés dans le tableau du carnet (tous sauf
+  // l'écolage, qui reste la série de lignes mensuelles) : periodMonths place
+  // leur ligne juste avant le mois correspondant (voir buildRowSpecs dans
+  // carnet-pdf.ts). Un type sans periodMonths n'apparaît pas dans ce tableau,
+  // ni un type dont les classes concernées excluent celle de l'élève (ex: un
+  // "Frais excursion" réservé à certaines classes n'apparaît pas pour les
+  // autres).
+  const otherPaymentTypes = useMemo<OtherPaymentType[]>(() => {
+    if (!selectedStudent) return [];
+    return paymentTypes
+      .filter(
+        (t) =>
+          normalizeText(t.name) !== "ecolage" &&
+          t.periodMonths != null &&
+          (t.classIds.length === 0 || t.classIds.includes(selectedStudent.classId))
+      )
+      .map((t) => ({ id: t.id, name: t.name, periodMonths: t.periodMonths as number }));
+  }, [paymentTypes, selectedStudent]);
+
   // Paiements déjà encaissés (à la date d'aujourd'hui, donc à la date d'export du
-  // PDF) pour préremplir le tableau : la ligne FG avec l'inscription/réinscription,
-  // et chaque mois d'écolage déjà réglé avec sa date et son montant.
+  // PDF) pour préremplir le tableau : chaque "autre" type positionné avec sa
+  // date/montant, et chaque mois d'écolage déjà réglé.
   const paymentSummary = useMemo<CarnetPaymentSummary>(() => {
     if (!selectedStudent) return {};
 
@@ -191,16 +214,15 @@ export default function CarnetCorrespondancePage() {
       return { date, amount };
     };
 
-    const registrationTypeIds = new Set(
-      paymentTypes
-        .filter((t) => REGISTRATION_TYPE_NAMES.includes(normalizeText(t.name)))
-        .map((t) => t.id)
-    );
-    const registration = aggregate(
-      studentPayments.filter(
-        (p) => registrationTypeIds.has(p.paymentTypeId) && (p.year === startYear || p.year === endYear)
-      )
-    );
+    const byPaymentTypeId: Record<string, { date: string; amount: number }> = {};
+    for (const type of otherPaymentTypes) {
+      const agg = aggregate(
+        studentPayments.filter(
+          (p) => p.paymentTypeId === type.id && (p.year === startYear || p.year === endYear)
+        )
+      );
+      if (agg) byPaymentTypeId[type.id] = agg;
+    }
 
     const ecolageType = paymentTypes.find((t) => normalizeText(t.name) === "ecolage");
     const ecolageByMonth: Record<string, { date: string; amount: number }> = {};
@@ -220,8 +242,8 @@ export default function CarnetCorrespondancePage() {
       }
     }
 
-    return { registration, ecolageByMonth };
-  }, [selectedStudent, payments, paymentTypes, schoolYear]);
+    return { ecolageByMonth, byPaymentTypeId };
+  }, [selectedStudent, payments, paymentTypes, otherPaymentTypes, schoolYear]);
 
   const handleClassFilterChange = (value: string) => {
     setClassFilter(value);
@@ -260,6 +282,7 @@ export default function CarnetCorrespondancePage() {
         schoolYear,
         selectedClassLevel,
         ecolageAmount,
+        otherPaymentTypes,
         paymentSummary
       );
     } finally {

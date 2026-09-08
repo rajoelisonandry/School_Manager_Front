@@ -56,7 +56,7 @@ interface ClassOption {
 interface PaymentTypeOption {
   id: string;
   name: string;
-  classId: string | null;
+  classIds: string[];
 }
 
 interface Payment {
