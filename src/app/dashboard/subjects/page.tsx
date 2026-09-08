@@ -38,10 +38,12 @@ import {
 import { getClasses } from "../classes/actions";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface Subject {
   id: string;
   name: string;
+  initial: string;
   classCoefficients: ClassCoefficient[];
   classIds: string[];
 }
@@ -54,30 +56,47 @@ interface ClassOption {
 
 interface SubjectFormData {
   name: string;
+  initial: string;
   classCoefficients: ClassCoefficient[];
 }
 
 const emptyFormData: SubjectFormData = {
   name: "",
+  initial: "",
   classCoefficients: [],
 };
 
+interface SubjectsPageCache {
+  subjects: Subject[];
+  classes: ClassOption[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "subjects-page";
+
 export default function SubjectsPage() {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>(
+    () => getCachedData<SubjectsPageCache>(CACHE_KEY)?.subjects ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<SubjectsPageCache>(CACHE_KEY)?.classes ?? []
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [formData, setFormData] = useState<SubjectFormData>(emptyFormData);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<SubjectsPageCache>(CACHE_KEY) === undefined
+  );
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<SubjectsPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
     const [subjectsData, classesData] = await Promise.all([getSubjects(), getClasses()]);
+    setCachedData<SubjectsPageCache>(CACHE_KEY, { subjects: subjectsData, classes: classesData });
     setSubjects(subjectsData);
     setClasses(classesData);
     setIsLoading(false);
@@ -104,6 +123,7 @@ export default function SubjectsPage() {
     e.preventDefault();
     const dataToSave = {
       name: formData.name,
+      initial: formData.initial.trim(),
       classCoefficients: formData.classCoefficients,
     };
 
@@ -122,6 +142,7 @@ export default function SubjectsPage() {
     setEditingSubject(subject);
     setFormData({
       name: subject.name,
+      initial: subject.initial,
       classCoefficients: subject.classCoefficients,
     });
     setIsDialogOpen(true);
@@ -174,7 +195,7 @@ export default function SubjectsPage() {
   if (isLoading) {
     return (
       <PageListSkeleton
-        tableCols={3}
+        tableCols={4}
         tableRows={6}
         tableHeaderControls={1}
         withHeaderActionButton
@@ -221,6 +242,28 @@ export default function SubjectsPage() {
                     }
                     placeholder="Ex: Mathématiques"
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    Initiale
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-56">
+                        Abréviation affichée dans l&apos;emploi du temps PDF à la place du
+                        nom complet (ex: &quot;ANG&quot; pour Anglais) — laissez vide pour
+                        afficher le nom complet
+                      </TooltipContent>
+                    </Tooltip>
+                  </label>
+                  <Input
+                    value={formData.initial}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, initial: e.target.value }))
+                    }
+                    placeholder="Ex: ANG"
                   />
                 </div>
                 <div className="space-y-2">
@@ -313,6 +356,7 @@ export default function SubjectsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Matière</TableHead>
+                <TableHead>Initiale</TableHead>
                 <TableHead>Classes (coefficient)</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -321,6 +365,7 @@ export default function SubjectsPage() {
               {filteredSubjects.map((subject) => (
                 <TableRow key={subject.id}>
                   <TableCell className="font-medium">{subject.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{subject.initial || "-"}</TableCell>
                   <TableCell>{getClassCoefficientSummary(subject) || "-"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -354,7 +399,7 @@ export default function SubjectsPage() {
               ))}
               {filteredSubjects.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     Aucune matière trouvée
                   </TableCell>
                 </TableRow>

@@ -40,6 +40,7 @@ import { getClasses } from "../classes/actions";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface Teacher {
   id: string;
@@ -80,27 +81,49 @@ const emptyFormData: Partial<Teacher> = {
   phones: [""],
 };
 
+interface TeachersPageCache {
+  teachers: Teacher[];
+  subjects: SubjectOption[];
+  classes: ClassOption[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "teachers-page";
+
 export default function TeachersPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>(
+    () => getCachedData<TeachersPageCache>(CACHE_KEY)?.teachers ?? []
+  );
+  const [subjects, setSubjects] = useState<SubjectOption[]>(
+    () => getCachedData<TeachersPageCache>(CACHE_KEY)?.subjects ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<TeachersPageCache>(CACHE_KEY)?.classes ?? []
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formData, setFormData] = useState<Partial<Teacher>>(emptyFormData);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<TeachersPageCache>(CACHE_KEY) === undefined
+  );
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<TeachersPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
     const [teachersData, subjectsData, classesData] = await Promise.all([
       getTeachers(),
       getSubjects(),
       getClasses(),
     ]);
+    setCachedData<TeachersPageCache>(CACHE_KEY, {
+      teachers: teachersData,
+      subjects: subjectsData,
+      classes: classesData,
+    });
     setTeachers(teachersData);
     setSubjects(subjectsData);
     setClasses(classesData);

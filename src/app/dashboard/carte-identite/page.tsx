@@ -25,6 +25,7 @@ import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
 import { PageHeaderSkeleton } from "@/components/loading-skeletons";
 import { currentSchoolYear, schoolYearOptions } from "@/lib/school-year";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface Student {
   id: string;
@@ -46,10 +47,24 @@ interface ClassOption {
 
 const ALL_CLASSES = "all";
 
+interface CarteIdentitePageCache {
+  students: Student[];
+  classes: ClassOption[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "carte-identite-page";
+
 export default function CarteIdentitePage() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>(
+    () => getCachedData<CarteIdentitePageCache>(CACHE_KEY)?.students ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<CarteIdentitePageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<CarteIdentitePageCache>(CACHE_KEY) === undefined
+  );
   const [classFilter, setClassFilter] = useState(ALL_CLASSES);
   const [studentId, setStudentId] = useState("");
   const [schoolYear, setSchoolYear] = useState(currentSchoolYear());
@@ -58,6 +73,7 @@ export default function CarteIdentitePage() {
 
   useEffect(() => {
     Promise.all([getStudents(), getClasses()]).then(([s, c]) => {
+      setCachedData<CarteIdentitePageCache>(CACHE_KEY, { students: s, classes: c });
       setStudents(s);
       setClasses(c);
       setIsLoading(false);

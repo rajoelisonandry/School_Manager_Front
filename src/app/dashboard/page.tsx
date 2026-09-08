@@ -16,10 +16,20 @@ import { CollectedPaymentsChart } from "@/components/collected-payments-chart";
 import { PageHeader } from "@/components/page-header";
 import { DashboardSkeleton } from "@/components/loading-skeletons";
 import { startOfDay, startOfWeek } from "@/lib/date-utils";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
 }
+
+interface DashboardPageCache {
+  students: Awaited<ReturnType<typeof getStudents>>;
+  classes: Awaited<ReturnType<typeof getClasses>>;
+  payments: Awaited<ReturnType<typeof getPayments>>;
+}
+// Voir @/lib/page-data-cache : affiche instantanément les statistiques de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "dashboard-page";
 
 export default function DashboardPage() {
   const { user: currentUser } = useAuth();
@@ -35,50 +45,64 @@ export default function DashboardPage() {
   const [totalExpected, setTotalExpected] = useState(0);
   const [collectedToday, setCollectedToday] = useState(0);
   const [collectedThisWeek, setCollectedThisWeek] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<DashboardPageCache>(CACHE_KEY) === undefined
+  );
+
+  // Dérive toutes les statistiques affichées à partir des 3 listes brutes —
+  // partagé entre l'application immédiate du cache et le chargement frais, pour
+  // ne pas dupliquer ce calcul.
+  const applyData = (data: DashboardPageCache) => {
+    const { students, classes, payments } = data;
+    setTotalStudents(students.length);
+    setTotalClasses(classes.length);
+
+    const byLevel: Record<string, number> = {};
+    for (const cls of classes) {
+      const count = cls._count?.students ?? 0;
+      if (count > 0) {
+        byLevel[cls.level] = (byLevel[cls.level] || 0) + count;
+      }
+    }
+    setStudentsByLevel(byLevel);
+
+    setRecentPayments(payments.slice(0, 5));
+    setPayments(payments);
+    setTotalCollected(payments.reduce((sum, p) => sum + p.amountPaid, 0));
+    setTotalExpected(payments.reduce((sum, p) => sum + p.amountDue, 0));
+
+    const todayStart = startOfDay(new Date());
+    const weekStart = startOfWeek(new Date());
+    setCollectedToday(
+      payments
+        .filter((p) => new Date(p.paymentDate) >= todayStart)
+        .reduce((sum, p) => sum + p.amountPaid, 0)
+    );
+    setCollectedThisWeek(
+      payments
+        .filter((p) => new Date(p.paymentDate) >= weekStart)
+        .reduce((sum, p) => sum + p.amountPaid, 0)
+    );
+  };
 
   useEffect(() => {
+    const cached = getCachedData<DashboardPageCache>(CACHE_KEY);
+    if (cached) applyData(cached);
+
     const loadData = async () => {
-      setIsLoading(true);
+      if (cached === undefined) setIsLoading(true);
       const [students, classes, payments] = await Promise.all([
         getStudents(),
         getClasses(),
         getPayments(),
       ]);
-
-      setTotalStudents(students.length);
-      setTotalClasses(classes.length);
-
-      const byLevel: Record<string, number> = {};
-      for (const cls of classes) {
-        const count = cls._count?.students ?? 0;
-        if (count > 0) {
-          byLevel[cls.level] = (byLevel[cls.level] || 0) + count;
-        }
-      }
-      setStudentsByLevel(byLevel);
-
-      setRecentPayments(payments.slice(0, 5));
-      setPayments(payments);
-      setTotalCollected(payments.reduce((sum, p) => sum + p.amountPaid, 0));
-      setTotalExpected(payments.reduce((sum, p) => sum + p.amountDue, 0));
-
-      const todayStart = startOfDay(new Date());
-      const weekStart = startOfWeek(new Date());
-      setCollectedToday(
-        payments
-          .filter((p) => new Date(p.paymentDate) >= todayStart)
-          .reduce((sum, p) => sum + p.amountPaid, 0)
-      );
-      setCollectedThisWeek(
-        payments
-          .filter((p) => new Date(p.paymentDate) >= weekStart)
-          .reduce((sum, p) => sum + p.amountPaid, 0)
-      );
-
+      const fresh = { students, classes, payments };
+      setCachedData<DashboardPageCache>(CACHE_KEY, fresh);
+      applyData(fresh);
       setIsLoading(false);
     };
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const totalPending = totalExpected - totalCollected;

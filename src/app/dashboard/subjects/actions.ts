@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 interface BackendSubject {
   id: number
   name: string
+  initial: string | null
   classCoefficients: { id: number; coefficient: number; schoolClass: { id: number } }[]
 }
 
@@ -16,6 +17,9 @@ export interface ClassCoefficient {
 
 export interface SubjectInput {
   name: string
+  // Abréviation affichée dans l'emploi du temps (ex: "ANG" pour Anglais) à la
+  // place du nom complet ; si vide, l'emploi du temps affiche le nom complet.
+  initial?: string
   // Coefficient propre à chaque classe où la matière est enseignée (une même
   // matière peut peser différemment selon la classe).
   classCoefficients: ClassCoefficient[]
@@ -29,6 +33,7 @@ function toFrontSubject(subject: BackendSubject) {
   return {
     id: String(subject.id),
     name: subject.name,
+    initial: subject.initial ?? '',
     classCoefficients,
     // Dérivé pour les usages qui n'ont besoin que de la liste des classes (emploi
     // du temps, saisie des notes), sans se soucier du coefficient.

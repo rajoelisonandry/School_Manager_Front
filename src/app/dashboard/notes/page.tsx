@@ -52,6 +52,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
 import { currentSchoolYear, schoolYearOptions } from "@/lib/school-year";
 import { useAuth } from "@/lib/auth-context";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface ClassOption {
   id: string;
@@ -145,14 +146,31 @@ function extractErrorMessage(error: unknown): string {
   return "Une erreur est survenue lors de l'enregistrement des notes.";
 }
 
+interface NotesPageCache {
+  classes: ClassOption[];
+  subjects: SubjectOption[];
+  students: StudentOption[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "notes-page";
+
 export default function NotesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
-  const [students, setStudents] = useState<StudentOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<NotesPageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [subjects, setSubjects] = useState<SubjectOption[]>(
+    () => getCachedData<NotesPageCache>(CACHE_KEY)?.subjects ?? []
+  );
+  const [students, setStudents] = useState<StudentOption[]>(
+    () => getCachedData<NotesPageCache>(CACHE_KEY)?.students ?? []
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<NotesPageCache>(CACHE_KEY) === undefined
+  );
 
   const [schoolYear, setSchoolYear] = useState(currentSchoolYear());
 
@@ -189,12 +207,17 @@ export default function NotesPage() {
   }, []);
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<NotesPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
     const [classesData, subjectsData, studentsData] = await Promise.all([
       getClasses(),
       getSubjects(),
       getStudents(),
     ]);
+    setCachedData<NotesPageCache>(CACHE_KEY, {
+      classes: classesData,
+      subjects: subjectsData,
+      students: studentsData,
+    });
     setClasses(classesData);
     setSubjects(subjectsData);
     setStudents(studentsData);

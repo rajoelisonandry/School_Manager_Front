@@ -37,6 +37,7 @@ import {
 } from "@/lib/school-year";
 import { exportPaymentTrackingPdf } from "@/lib/pdf/payment-tracking-pdf";
 import { PageListSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface Student {
   id: string;
@@ -130,24 +131,50 @@ function formatShortDate(date: string) {
   return new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
 }
 
+interface PaymentTrackingPageCache {
+  students: Student[];
+  classes: ClassOption[];
+  paymentTypes: PaymentTypeOption[];
+  payments: Payment[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "payment-tracking-page";
+
 export default function PaymentTrackingPage() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [students, setStudents] = useState<Student[]>(
+    () => getCachedData<PaymentTrackingPageCache>(CACHE_KEY)?.students ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<PaymentTrackingPageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>(
+    () => getCachedData<PaymentTrackingPageCache>(CACHE_KEY)?.paymentTypes ?? []
+  );
+  const [payments, setPayments] = useState<Payment[]>(
+    () => getCachedData<PaymentTrackingPageCache>(CACHE_KEY)?.payments ?? []
+  );
   const [classId, setClassId] = useState<string>("");
   const [schoolYear, setSchoolYear] = useState(currentSchoolYear());
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<PaymentTrackingPageCache>(CACHE_KEY) === undefined
+  );
 
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
+      if (getCachedData<PaymentTrackingPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
       const [studentsData, classesData, typesData, paymentsData] = await Promise.all([
         getStudents(),
         getClasses(),
         getPaymentTypes(),
         getPayments(),
       ]);
+      setCachedData<PaymentTrackingPageCache>(CACHE_KEY, {
+        students: studentsData,
+        classes: classesData,
+        paymentTypes: typesData,
+        payments: paymentsData,
+      });
       setStudents(studentsData);
       setClasses(classesData);
       setPaymentTypes(typesData);

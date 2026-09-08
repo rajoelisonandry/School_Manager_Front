@@ -27,6 +27,7 @@ import { exportCarnetCoverPdf, type CarnetPaymentSummary } from "@/lib/pdf/carne
 import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
 import { PageHeaderSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 import {
   currentSchoolYear,
   schoolYearOptions,
@@ -89,13 +90,36 @@ const ALL_CLASSES = "all";
 // (élève déjà présent l'année précédente) : les deux valent pour la ligne FG.
 const REGISTRATION_TYPE_NAMES = ["inscription", "reinscription"];
 
+interface CarnetPageCache {
+  students: Student[];
+  classes: ClassOption[];
+  paymentTypes: PaymentTypeOption[];
+  paymentTypeRates: PaymentTypeRate[];
+  payments: Payment[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "carnet-correspondance-page";
+
 export default function CarnetCorrespondancePage() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>([]);
-  const [paymentTypeRates, setPaymentTypeRates] = useState<PaymentTypeRate[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>(
+    () => getCachedData<CarnetPageCache>(CACHE_KEY)?.students ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<CarnetPageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>(
+    () => getCachedData<CarnetPageCache>(CACHE_KEY)?.paymentTypes ?? []
+  );
+  const [paymentTypeRates, setPaymentTypeRates] = useState<PaymentTypeRate[]>(
+    () => getCachedData<CarnetPageCache>(CACHE_KEY)?.paymentTypeRates ?? []
+  );
+  const [payments, setPayments] = useState<Payment[]>(
+    () => getCachedData<CarnetPageCache>(CACHE_KEY)?.payments ?? []
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<CarnetPageCache>(CACHE_KEY) === undefined
+  );
   const [classFilter, setClassFilter] = useState(ALL_CLASSES);
   const [studentId, setStudentId] = useState("");
   const [schoolYear, setSchoolYear] = useState(currentSchoolYear());
@@ -109,6 +133,13 @@ export default function CarnetCorrespondancePage() {
       getPaymentTypeRates(),
       getPayments(),
     ]).then(([s, c, pt, ptr, p]) => {
+      setCachedData<CarnetPageCache>(CACHE_KEY, {
+        students: s,
+        classes: c,
+        paymentTypes: pt,
+        paymentTypeRates: ptr,
+        payments: p,
+      });
       setStudents(s);
       setClasses(c);
       setPaymentTypes(pt);

@@ -64,6 +64,7 @@ import { getTeachers } from "../teachers/actions";
 import { getSubjects } from "../subjects/actions";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface TimetableEntry {
   id: string;
@@ -72,6 +73,7 @@ interface TimetableEntry {
   teacherName: string;
   subjectId: string;
   subjectName: string;
+  subjectInitial: string;
   dayOfWeek: string;
   startTime: string;
   endTime: string;
@@ -168,15 +170,36 @@ function extractErrorMessage(error: unknown): string {
   return "Une erreur est survenue lors de l'enregistrement de ce cours.";
 }
 
+interface EmploisDuTempsPageCache {
+  entries: TimetableEntry[];
+  classes: ClassOption[];
+  teachers: TeacherOption[];
+  subjects: SubjectOption[];
+  availabilities: Awaited<ReturnType<typeof getTeacherAvailabilities>>;
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "emplois-du-temps-page";
+
 export default function EmploisDuTempsPage() {
-  const [entries, setEntries] = useState<TimetableEntry[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
-  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
+  const [entries, setEntries] = useState<TimetableEntry[]>(
+    () => getCachedData<EmploisDuTempsPageCache>(CACHE_KEY)?.entries ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<EmploisDuTempsPageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [teachers, setTeachers] = useState<TeacherOption[]>(
+    () => getCachedData<EmploisDuTempsPageCache>(CACHE_KEY)?.teachers ?? []
+  );
+  const [subjects, setSubjects] = useState<SubjectOption[]>(
+    () => getCachedData<EmploisDuTempsPageCache>(CACHE_KEY)?.subjects ?? []
+  );
   const [availabilities, setAvailabilities] = useState<
-    { teacherId: string; dayOfWeek: string; startTime: string; endTime: string }[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
+    Awaited<ReturnType<typeof getTeacherAvailabilities>>
+  >(() => getCachedData<EmploisDuTempsPageCache>(CACHE_KEY)?.availabilities ?? []);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<EmploisDuTempsPageCache>(CACHE_KEY) === undefined
+  );
   const [selectedClassId, setSelectedClassId] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimetableEntry | null>(null);
@@ -204,7 +227,7 @@ export default function EmploisDuTempsPage() {
   }, []);
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<EmploisDuTempsPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
     const [entriesData, classesData, teachersData, subjectsData, availabilitiesData] =
       await Promise.all([
         getTimetableEntries(),
@@ -213,6 +236,13 @@ export default function EmploisDuTempsPage() {
         getSubjects(),
         getTeacherAvailabilities(),
       ]);
+    setCachedData<EmploisDuTempsPageCache>(CACHE_KEY, {
+      entries: entriesData,
+      classes: classesData,
+      teachers: teachersData,
+      subjects: subjectsData,
+      availabilities: availabilitiesData,
+    });
     setEntries(entriesData);
     setClasses(classesData);
     setTeachers(teachersData);

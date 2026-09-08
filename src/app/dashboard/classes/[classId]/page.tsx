@@ -17,6 +17,7 @@ import { getClasses } from "../actions";
 import { getStudents } from "../../students/actions";
 import { TableSkeleton, StatCardsSkeleton } from "@/components/loading-skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface Student {
   id: string;
@@ -48,20 +49,37 @@ export default function ClassStudentsPage({
   params: { classId: string };
 }) {
   const router = useRouter();
-  const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
-  const [classStudents, setClassStudents] = useState<Student[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Voir @/lib/page-data-cache : affiche instantanément les données de la
+  // dernière visite de CETTE classe pendant qu'un rafraîchissement silencieux
+  // se termine, au lieu de remontrer le squelette de chargement à chaque fois.
+  const cacheKey = `class-students-page:${params.classId}`;
+  type ClassPageCache = { selectedClass: ClassInfo | null; classStudents: Student[] };
+  const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(
+    () => getCachedData<ClassPageCache>(cacheKey)?.selectedClass ?? null
+  );
+  const [classStudents, setClassStudents] = useState<Student[]>(
+    () => getCachedData<ClassPageCache>(cacheKey)?.classStudents ?? []
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<ClassPageCache>(cacheKey) === undefined
+  );
 
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
+      if (getCachedData<ClassPageCache>(cacheKey) === undefined) setIsLoading(true);
       const [classes, students] = await Promise.all([getClasses(), getStudents()]);
-      setSelectedClass(classes.find((c) => c.id === params.classId) ?? null);
-      setClassStudents(students.filter((s) => s.classId === params.classId));
+      const nextSelectedClass = classes.find((c) => c.id === params.classId) ?? null;
+      const nextClassStudents = students.filter((s) => s.classId === params.classId);
+      setCachedData<ClassPageCache>(cacheKey, {
+        selectedClass: nextSelectedClass,
+        classStudents: nextClassStudents,
+      });
+      setSelectedClass(nextSelectedClass);
+      setClassStudents(nextClassStudents);
       setIsLoading(false);
     };
     loadData();
-  }, [params.classId]);
+  }, [params.classId, cacheKey]);
 
   if (isLoading) {
     return (

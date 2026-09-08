@@ -11,7 +11,7 @@ interface BackendTimetableEntry {
   room?: string
   schoolClass: { id: number; name: string }
   teacher: { id: number; firstName: string; lastName: string } | null
-  subject: { id: number; name: string }
+  subject: { id: number; name: string; initial: string | null }
   groupId: string | null
 }
 
@@ -36,6 +36,7 @@ function toFrontEntry(entry: BackendTimetableEntry) {
     teacherName: entry.teacher ? `${entry.teacher.lastName} ${entry.teacher.firstName}` : '',
     subjectId: String(entry.subject.id),
     subjectName: entry.subject.name,
+    subjectInitial: entry.subject.initial ?? '',
     dayOfWeek: entry.dayOfWeek,
     startTime: entry.startTime,
     endTime: entry.endTime,

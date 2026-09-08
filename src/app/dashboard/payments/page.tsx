@@ -39,6 +39,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Search, Wallet, CheckCircle, Clock, Plus, Trash2, Info, Printer, Receipt, Scissors, X, DollarSign, ChevronLeft, ChevronRight, Pencil, ClipboardCheck, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 import { getPayments, getPaymentsPaginated, createPaymentBatch, deletePayment } from "./actions";
 import { getStudents } from "../students/actions";
 import { getPaymentTypes } from "../payment-types/actions";
@@ -251,27 +252,61 @@ function CutLine({ className = "my-2" }: { className?: string }) {
 
 const HISTORY_LIMIT = 10;
 
+interface PaymentsPageCache {
+  payments: Payment[];
+  students: StudentOption[];
+  paymentTypes: PaymentTypeOption[];
+  classes: ClassOption[];
+  rates: PaymentTypeRateOption[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "payments-page";
+
+interface PaymentsHistoryCache {
+  items: Payment[];
+  total: number;
+  totalPages: number;
+}
+// Une entrée par combinaison page/recherche : ne sert vraiment (la première
+// page sans recherche) que pour l'entrée initiale sur la page, mais couvre
+// aussi une pagination/recherche déjà vue durant la session.
+const historyCacheKey = (page: number, search: string) => `payments-history-page:${page}:${search}`;
+
 export default function PaymentsPage() {
   const { user: currentUser } = useAuth();
   const canSeeStats = currentUser?.role === "admin";
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [students, setStudents] = useState<StudentOption[]>([]);
-  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [rates, setRates] = useState<PaymentTypeRateOption[]>([]);
+  const [payments, setPayments] = useState<Payment[]>(
+    () => getCachedData<PaymentsPageCache>(CACHE_KEY)?.payments ?? []
+  );
+  const [students, setStudents] = useState<StudentOption[]>(
+    () => getCachedData<PaymentsPageCache>(CACHE_KEY)?.students ?? []
+  );
+  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeOption[]>(
+    () => getCachedData<PaymentsPageCache>(CACHE_KEY)?.paymentTypes ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<PaymentsPageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [rates, setRates] = useState<PaymentTypeRateOption[]>(
+    () => getCachedData<PaymentsPageCache>(CACHE_KEY)?.rates ?? []
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState(emptyFormData);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<PaymentsPageCache>(CACHE_KEY) === undefined
+  );
   const [receiptPayments, setReceiptPayments] = useState<Payment[] | null>(null);
 
-  const [historyItems, setHistoryItems] = useState<Payment[]>([]);
+  const initialHistoryCache = getCachedData<PaymentsHistoryCache>(historyCacheKey(1, ""));
+  const [historyItems, setHistoryItems] = useState<Payment[]>(initialHistoryCache?.items ?? []);
   const [historyPage, setHistoryPage] = useState(1);
-  const [historyTotal, setHistoryTotal] = useState(0);
-  const [historyTotalPages, setHistoryTotalPages] = useState(1);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [historyTotal, setHistoryTotal] = useState(initialHistoryCache?.total ?? 0);
+  const [historyTotalPages, setHistoryTotalPages] = useState(initialHistoryCache?.totalPages ?? 1);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(initialHistoryCache === undefined);
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
@@ -293,8 +328,14 @@ export default function PaymentsPage() {
   }, [historyPage, debouncedSearch]);
 
   const loadHistory = async (page: number, search: string) => {
-    setIsHistoryLoading(true);
+    const key = historyCacheKey(page, search);
+    if (getCachedData<PaymentsHistoryCache>(key) === undefined) setIsHistoryLoading(true);
     const result = await getPaymentsPaginated(page, HISTORY_LIMIT, search || undefined);
+    setCachedData<PaymentsHistoryCache>(key, {
+      items: result.items,
+      total: result.total,
+      totalPages: result.totalPages,
+    });
     setHistoryItems(result.items);
     setHistoryTotal(result.total);
     setHistoryTotalPages(result.totalPages);
@@ -302,7 +343,7 @@ export default function PaymentsPage() {
   };
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<PaymentsPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
     const [paymentsData, studentsData, typesData, classesData, ratesData] = await Promise.all([
       getPayments(),
       getStudents(),
@@ -310,6 +351,13 @@ export default function PaymentsPage() {
       getClasses(),
       getPaymentTypeRates(),
     ]);
+    setCachedData<PaymentsPageCache>(CACHE_KEY, {
+      payments: paymentsData,
+      students: studentsData,
+      paymentTypes: typesData,
+      classes: classesData,
+      rates: ratesData,
+    });
     setPayments(paymentsData);
     setStudents(studentsData);
     setPaymentTypes(typesData);

@@ -46,6 +46,7 @@ import { getPaymentTypeRates } from "../payment-type-rates/actions";
 import { currentSchoolYear, schoolYearStart } from "@/lib/school-year";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface PaymentType {
   id: string;
@@ -80,28 +81,50 @@ function formatAriary(amount: number) {
   return `${amount.toLocaleString("fr-FR")} Ar`;
 }
 
+interface PaymentTypesPageCache {
+  paymentTypes: PaymentType[];
+  classes: ClassOption[];
+  rates: RateOption[];
+}
+// Voir @/lib/page-data-cache : affiche instantanément les données de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "payment-types-page";
+
 export default function PaymentTypesPage() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === "admin";
-  const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [rates, setRates] = useState<RateOption[]>([]);
+  const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>(
+    () => getCachedData<PaymentTypesPageCache>(CACHE_KEY)?.paymentTypes ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<PaymentTypesPageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [rates, setRates] = useState<RateOption[]>(
+    () => getCachedData<PaymentTypesPageCache>(CACHE_KEY)?.rates ?? []
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<PaymentType | null>(null);
   const [formData, setFormData] = useState(emptyFormData);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<PaymentTypesPageCache>(CACHE_KEY) === undefined
+  );
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<PaymentTypesPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
     const [types, classesData, ratesData] = await Promise.all([
       getPaymentTypes(),
       getClasses(),
       getPaymentTypeRates(),
     ]);
+    setCachedData<PaymentTypesPageCache>(CACHE_KEY, {
+      paymentTypes: types,
+      classes: classesData,
+      rates: ratesData,
+    });
     setPaymentTypes(types);
     setClasses(classesData);
     setRates(ratesData);

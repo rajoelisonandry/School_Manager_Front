@@ -39,6 +39,7 @@ import { getUsers, createUser, updateUser, deleteUser, uploadUserPhoto } from ".
 import { DocumentUploadField } from "@/components/document-upload-field";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface User {
   id: string;
@@ -62,14 +63,18 @@ const emptyFormData: Partial<User> = {
   profilePhotoUrl: "",
 };
 
+// Voir @/lib/page-data-cache : affiche instantanément les utilisateurs de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "users-page";
+
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>(() => getCachedData<User[]>(CACHE_KEY) ?? []);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User>>(emptyFormData);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => getCachedData<User[]>(CACHE_KEY) === undefined);
 
   useEffect(() => {
     if (currentUser?.role === "admin") {
@@ -78,8 +83,9 @@ export default function UsersPage() {
   }, [currentUser]);
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<User[]>(CACHE_KEY) === undefined) setIsLoading(true);
     const data = await getUsers();
+    setCachedData<User[]>(CACHE_KEY, data);
     setUsers(data);
     setIsLoading(false);
   };

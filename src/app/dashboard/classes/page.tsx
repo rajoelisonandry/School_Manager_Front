@@ -39,6 +39,7 @@ import { getClasses, createClass, updateClass, deleteClass } from './actions'
 import { PageHeader } from "@/components/page-header";
 import { PageHeaderSkeleton, TableSkeleton } from "@/components/loading-skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface Class {
   id: string;
@@ -50,10 +51,16 @@ interface Class {
   };
 }
 
+// Voir @/lib/page-data-cache : affiche instantanément les classes de la
+// dernière visite pendant qu'un rafraîchissement silencieux se termine.
+const CACHE_KEY = "classes-page";
+
 export default function ClassesPage() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === "admin";
-  const [classes, setClasses] = useState<Class[]>([]);
+  const [classes, setClasses] = useState<Class[]>(
+    () => getCachedData<Class[]>(CACHE_KEY) ?? []
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [formData, setFormData] = useState<Partial<Class>>({
@@ -61,15 +68,16 @@ export default function ClassesPage() {
     level: "primaire",
     capacity: 30,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => getCachedData<Class[]>(CACHE_KEY) === undefined);
 
   useEffect(() => {
     loadClasses();
   }, []);
 
   const loadClasses = async () => {
-    setIsLoading(true);
+    if (getCachedData<Class[]>(CACHE_KEY) === undefined) setIsLoading(true);
     const data = await getClasses();
+    setCachedData<Class[]>(CACHE_KEY, data);
     setClasses(data);
     setIsLoading(false);
   };

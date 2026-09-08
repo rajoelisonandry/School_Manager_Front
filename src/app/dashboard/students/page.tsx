@@ -62,6 +62,7 @@ import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
 import { schoolYearOptions, schoolYearStart } from "@/lib/school-year";
 import { PageListSkeleton } from "@/components/loading-skeletons";
+import { getCachedData, setCachedData } from "@/lib/page-data-cache";
 
 interface Student {
   id: string;
@@ -95,6 +96,17 @@ interface ClassOption {
 const ALL_CLASSES = "all";
 const ALL_YEARS = "all";
 
+// Clé de cache mémoire (voir @/lib/page-data-cache) : affiche instantanément
+// les données de la dernière visite le temps qu'un rafraîchissement silencieux
+// se termine, au lieu de remontrer le squelette de chargement à chaque entrée
+// sur la page.
+const CACHE_KEY = "students-page";
+interface StudentsPageCache {
+  students: Student[];
+  classes: ClassOption[];
+  payments: Awaited<ReturnType<typeof getPayments>>;
+}
+
 // Largeur / hauteur de la boîte photo dans les PDF (carnet de correspondance,
 // carte d'identité scolaire) : sert à cadrer la photo d'identité à l'envoi pour
 // que l'aperçu du recadrage corresponde au rendu final dans les documents.
@@ -125,16 +137,24 @@ const emptyFormData: Partial<Student> = {
 export default function StudentsPage() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === "admin";
-  const [students, setStudents] = useState<Student[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPayments>>>([]);
+  const [students, setStudents] = useState<Student[]>(
+    () => getCachedData<StudentsPageCache>(CACHE_KEY)?.students ?? []
+  );
+  const [classes, setClasses] = useState<ClassOption[]>(
+    () => getCachedData<StudentsPageCache>(CACHE_KEY)?.classes ?? []
+  );
+  const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPayments>>>(
+    () => getCachedData<StudentsPageCache>(CACHE_KEY)?.payments ?? []
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [classFilter, setClassFilter] = useState(ALL_CLASSES);
   const [schoolYearFilter, setSchoolYearFilter] = useState(ALL_YEARS);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState<Partial<Student>>(emptyFormData);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => getCachedData<StudentsPageCache>(CACHE_KEY) === undefined
+  );
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -147,7 +167,7 @@ export default function StudentsPage() {
   }, []);
 
   const loadData = async () => {
-    setIsLoading(true);
+    if (getCachedData<StudentsPageCache>(CACHE_KEY) === undefined) setIsLoading(true);
     const [studentsData, classesData, paymentsData] = await Promise.all([
       getStudents(),
       getClasses(),
@@ -157,6 +177,11 @@ export default function StudentsPage() {
     const sortedStudents = [...studentsData].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
+    setCachedData<StudentsPageCache>(CACHE_KEY, {
+      students: sortedStudents,
+      classes: classesData,
+      payments: paymentsData,
+    });
     setStudents(sortedStudents);
     setClasses(classesData);
     setPayments(paymentsData);
@@ -936,6 +961,23 @@ export default function StudentsPage() {
           </DialogHeader>
 
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <div>
+              <h3 className="text-sm font-medium mb-2">Classe à imprimer</h3>
+              <Select value={classFilter} onValueChange={setClassFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filtrer par classe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_CLASSES}>Toutes les classes</SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <h3 className="text-sm font-medium mb-2">Colonnes (dans l&apos;ordre d&apos;impression)</h3>
               <div className="space-y-1.5">
