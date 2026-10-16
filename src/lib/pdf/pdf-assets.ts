@@ -6,8 +6,9 @@ import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 
 export const POPPINS = "Poppins";
-const POPPINS_FILES: Record<"normal" | "semibold" | "bold", string> = {
+const POPPINS_FILES: Record<"normal" | "italic" | "semibold" | "bold", string> = {
   normal: "/fonts/poppins/Poppins-Regular.ttf",
+  italic: "/fonts/poppins/Poppins-Italic.ttf",
   semibold: "/fonts/poppins/Poppins-SemiBold.ttf",
   bold: "/fonts/poppins/Poppins-Bold.ttf",
 };
@@ -46,6 +47,8 @@ export async function registerPoppins(doc: jsPDF) {
   const fonts = await loadPoppins();
   doc.addFileToVFS("Poppins-Regular.ttf", fonts.normal);
   doc.addFont("Poppins-Regular.ttf", POPPINS, "normal");
+  doc.addFileToVFS("Poppins-Italic.ttf", fonts.italic);
+  doc.addFont("Poppins-Italic.ttf", POPPINS, "italic");
   doc.addFileToVFS("Poppins-SemiBold.ttf", fonts.semibold);
   doc.addFont("Poppins-SemiBold.ttf", POPPINS, "semibold");
   doc.addFileToVFS("Poppins-Bold.ttf", fonts.bold);

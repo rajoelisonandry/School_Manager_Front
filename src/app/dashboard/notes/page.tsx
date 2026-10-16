@@ -47,6 +47,8 @@ import { getClasses } from "../classes/actions";
 import { getSubjects } from "../subjects/actions";
 import { getStudents } from "../students/actions";
 import { exportBulletinsPdf } from "@/lib/pdf/bulletin-pdf";
+import { exportBulletinCoversPdf } from "@/lib/pdf/bulletin-cover-pdf";
+import { backendFileUrl } from "@/lib/backend/public-url";
 import { collectDsLabels, formatGrade } from "@/lib/bulletin";
 import { PageHeader } from "@/components/page-header";
 import { PageListSkeleton } from "@/components/loading-skeletons";
@@ -73,6 +75,7 @@ interface StudentOption {
   lastName: string;
   classId: string;
   status: string;
+  identityPhotoUrl?: string;
 }
 
 const TRIMESTERS = [
@@ -201,6 +204,7 @@ export default function NotesPage() {
   const [showGradeDetails, setShowGradeDetails] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportStudentId, setExportStudentId] = useState(ALL_STUDENTS);
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -400,6 +404,33 @@ export default function NotesPage() {
     const className = classes.find((c) => c.id === bulletinClassId)?.name ?? "";
     exportBulletinsPdf(selected, className, schoolYear, Number(bulletinTrimester), showGradeDetails);
     setIsExportDialogOpen(false);
+  };
+
+  // Couverture du bulletin (A4 paysage), pour le même élève ou toute la classe.
+  const handleExportCoverFromDialog = async () => {
+    const selected =
+      exportStudentId === ALL_STUDENTS
+        ? sortedBulletins
+        : bulletins.filter((b) => b.studentId === exportStudentId);
+    if (selected.length === 0) return;
+    const className = classes.find((c) => c.id === bulletinClassId)?.name ?? "";
+    const photoByStudentId = new Map(students.map((s) => [s.id, s.identityPhotoUrl]));
+    setIsGeneratingCover(true);
+    try {
+      await exportBulletinCoversPdf(
+        selected.map((b) => ({
+          matricule: b.matricule,
+          firstName: b.firstName,
+          lastName: b.lastName,
+          identityPhotoUrl: backendFileUrl(photoByStudentId.get(b.studentId)) ?? undefined,
+        })),
+        className,
+        schoolYear
+      );
+      setIsExportDialogOpen(false);
+    } finally {
+      setIsGeneratingCover(false);
+    }
   };
 
   if (isLoading) {
@@ -732,6 +763,19 @@ export default function NotesPage() {
                   />
                 </div>
                 <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={handleExportCoverFromDialog}
+                    disabled={isGeneratingCover}
+                    className="gap-2"
+                  >
+                    {isGeneratingCover ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileDown className="h-4 w-4" />
+                    )}
+                    Couverture (PDF)
+                  </Button>
                   <Button onClick={handleExportFromDialog} className="gap-2">
                     <FileDown className="h-4 w-4" />
                     Générer le PDF
