@@ -44,6 +44,7 @@ import {
   Info,
   UserX,
   FileDown,
+  FileSpreadsheet,
   Users,
   ChevronUp,
   ChevronDown,
@@ -51,12 +52,9 @@ import {
 import { getStudents, createStudent, updateStudent, deleteStudent, uploadStudentDocument } from "./actions";
 import { getClasses } from "../classes/actions";
 import { getPayments } from "../payments/actions";
-import {
-  exportStudentsPdf,
-  EXPORT_COLUMNS,
-  DEFAULT_EXPORT_COLUMNS,
-  type ColumnKey,
-} from "@/lib/pdf/students-pdf";
+import { exportStudentsPdf } from "@/lib/pdf/students-pdf";
+import { exportStudentsExcel } from "@/lib/excel/students-excel";
+import { EXPORT_COLUMNS, DEFAULT_EXPORT_COLUMNS, type ColumnKey } from "@/lib/export/student-columns";
 import { DocumentUploadField } from "@/components/document-upload-field";
 import { backendFileUrl } from "@/lib/backend/public-url";
 import { PageHeader } from "@/components/page-header";
@@ -315,9 +313,29 @@ export default function StudentsPage() {
     return cls ? cls.name : "Non assigné";
   };
 
+  // "Classe" (voir EXPORT_COLUMNS) n'est pas un champ de base de l'élève : on
+  // la calcule ici pour les deux exports, utile surtout en Excel où "toutes
+  // les classes" tient sur une seule feuille à plat (le PDF, lui, groupe déjà
+  // par classe via des pages séparées).
+  const studentsForExport = filteredStudents.map((student) => ({
+    ...student,
+    className: getClassName(student.classId),
+  }));
+
   const handleExportPdf = () => {
     exportStudentsPdf(
-      filteredStudents,
+      studentsForExport,
+      classes,
+      classFilter === ALL_CLASSES ? null : classFilter,
+      exportColumns,
+      blankColumns
+    );
+    setIsExportDialogOpen(false);
+  };
+
+  const handleExportExcel = () => {
+    exportStudentsExcel(
+      studentsForExport,
       classes,
       classFilter === ALL_CLASSES ? null : classFilter,
       exportColumns,
@@ -953,16 +971,16 @@ export default function StudentsPage() {
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Personnaliser l&apos;export PDF</DialogTitle>
+            <DialogTitle>Personnaliser l&apos;export</DialogTitle>
             <DialogDescription>
               Choisissez les colonnes à inclure et leur ordre, et ajoutez éventuellement
-              des colonnes vides à remplir à la main après impression.
+              des colonnes vides à remplir à la main — puis exportez en PDF ou en Excel.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             <div>
-              <h3 className="text-sm font-medium mb-2">Classe à imprimer</h3>
+              <h3 className="text-sm font-medium mb-2">Classe à exporter</h3>
               <Select value={classFilter} onValueChange={setClassFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Filtrer par classe" />
@@ -1095,6 +1113,14 @@ export default function StudentsPage() {
               Annuler
             </Button>
             <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={exportColumns.length === 0 && blankColumns.length === 0}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Exporter Excel
+            </Button>
+            <Button
               onClick={handleExportPdf}
               disabled={exportColumns.length === 0 && blankColumns.length === 0}
             >
@@ -1163,13 +1189,13 @@ export default function StudentsPage() {
                     disabled={filteredStudents.length === 0}
                   >
                     <FileDown className="h-4 w-4 mr-2" />
-                    Exporter PDF
+                    Exporter
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {classFilter === ALL_CLASSES
-                    ? "Exporter la liste, groupée par classe"
-                    : "Exporter la liste des élèves de cette classe"}
+                    ? "Exporter la liste en PDF ou Excel, groupée par classe"
+                    : "Exporter la liste des élèves de cette classe en PDF ou Excel"}
                 </TooltipContent>
               </Tooltip>
             </div>

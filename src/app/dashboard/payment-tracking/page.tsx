@@ -22,8 +22,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, Info, FileDown } from "lucide-react";
+import { CalendarCheck, Info, FileDown, Columns3 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { getStudents } from "../students/actions";
 import { getClasses } from "../classes/actions";
@@ -141,6 +150,11 @@ interface PaymentTrackingPageCache {
 // dernière visite pendant qu'un rafraîchissement silencieux se termine.
 const CACHE_KEY = "payment-tracking-page";
 
+// Colonnes masquées (autres frais + mois d'écolage) : mémorisées dans le
+// navigateur pour ne pas avoir à les décocher à nouveau à chaque visite. Ne
+// concerne que l'affichage à l'écran, pas l'export PDF (qui reste complet).
+const HIDDEN_COLUMNS_STORAGE_KEY = "payment-tracking-hidden-columns";
+
 export default function PaymentTrackingPage() {
   const [students, setStudents] = useState<Student[]>(
     () => getCachedData<PaymentTrackingPageCache>(CACHE_KEY)?.students ?? []
@@ -159,6 +173,33 @@ export default function PaymentTrackingPage() {
   const [isLoading, setIsLoading] = useState(
     () => getCachedData<PaymentTrackingPageCache>(CACHE_KEY) === undefined
   );
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
+  const [isColumnsDialogOpen, setIsColumnsDialogOpen] = useState(false);
+
+  // Lu après le montage (pas dans useState) : localStorage n'existe pas côté
+  // serveur, le lire plus tôt provoquerait un mismatch d'hydratation.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(HIDDEN_COLUMNS_STORAGE_KEY);
+      if (stored) setHiddenColumns(JSON.parse(stored));
+    } catch {
+      // Stockage indisponible (navigation privée...) : tant pis, tout reste visible.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HIDDEN_COLUMNS_STORAGE_KEY, JSON.stringify(hiddenColumns));
+    } catch {
+      // Idem : pas bloquant si ça échoue.
+    }
+  }, [hiddenColumns]);
+
+  const toggleColumn = (key: string) => {
+    setHiddenColumns((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -198,6 +239,18 @@ export default function PaymentTrackingPage() {
   const otherTypes = useMemo(
     () => paymentTypes.filter((t) => t.id !== ecolageType?.id),
     [paymentTypes, ecolageType]
+  );
+
+  // Colonnes réellement affichées dans le tableau (voir hiddenColumns) : Numéro,
+  // Matricule et Nom restent toujours visibles, seules celles-ci peuvent être
+  // masquées pour éviter d'avoir à défiler horizontalement à chaque fois.
+  const visibleOtherTypes = useMemo(
+    () => otherTypes.filter((t) => !hiddenColumns.includes(t.id)),
+    [otherTypes, hiddenColumns]
+  );
+  const visibleMonths = useMemo(
+    () => SCHOOL_MONTHS.filter((m) => !hiddenColumns.includes(m.key)),
+    [hiddenColumns]
   );
 
   const classStudents = useMemo(
@@ -353,6 +406,93 @@ export default function PaymentTrackingPage() {
           <TooltipContent>Exporter le suivi de cette classe en PDF</TooltipContent>
         </Tooltip>
 
+        <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              disabled={otherTypes.length === 0 && !ecolageType}
+              className="gap-2"
+            >
+              <Columns3 className="h-4 w-4" />
+              Colonnes
+              {hiddenColumns.length > 0 && (
+                <span className="rounded-full bg-primary/10 px-1.5 text-xs font-medium text-primary">
+                  {hiddenColumns.length} masquée{hiddenColumns.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Colonnes affichées</DialogTitle>
+              <DialogDescription>
+                Décochez les colonnes à masquer pour voir les autres sans défiler
+                horizontalement. Numéro, Matricule et Nom restent toujours visibles.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {otherTypes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Autres frais</h3>
+                  <div className="space-y-1.5">
+                    {otherTypes.map((type) => (
+                      <label
+                        key={type.id}
+                        className="flex items-center gap-2 text-sm cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!hiddenColumns.includes(type.id)}
+                          onChange={() => toggleColumn(type.id)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        {type.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {ecolageType && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Écolage (mois)</h3>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {SCHOOL_MONTHS.map((month) => (
+                      <label
+                        key={month.key}
+                        className="flex items-center gap-2 text-sm cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!hiddenColumns.includes(month.key)}
+                          onChange={() => toggleColumn(month.key)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        {month.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="mt-2 sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setHiddenColumns([])}
+                disabled={hiddenColumns.length === 0}
+              >
+                Tout afficher
+              </Button>
+              <Button type="button" onClick={() => setIsColumnsDialogOpen(false)}>
+                Fermer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <div className="flex items-center gap-4 text-xs text-muted-foreground w-full sm:w-auto sm:ml-auto">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
@@ -402,13 +542,13 @@ export default function PaymentTrackingPage() {
                   <TableHead>Numéro</TableHead>
                   <TableHead>Matricule</TableHead>
                   <TableHead>Nom et Prénom</TableHead>
-                  {otherTypes.map((type) => (
+                  {visibleOtherTypes.map((type) => (
                     <TableHead key={type.id} className="text-center whitespace-nowrap">
                       {type.name}
                     </TableHead>
                   ))}
                   {ecolageType &&
-                    SCHOOL_MONTHS.map((month) => (
+                    visibleMonths.map((month) => (
                       <TableHead key={month.key} className="text-center whitespace-nowrap">
                         {month.short}
                       </TableHead>
@@ -424,7 +564,7 @@ export default function PaymentTrackingPage() {
                       {student.lastName} {student.firstName}
                     </TableCell>
 
-                    {otherTypes.map((type) => {
+                    {visibleOtherTypes.map((type) => {
                       const status = findTypeStatus(student.id, type.id);
                       const due = isSchoolYearStarted(startYear);
                       return (
@@ -435,7 +575,7 @@ export default function PaymentTrackingPage() {
                     })}
 
                     {ecolageType &&
-                      SCHOOL_MONTHS.map((month) => {
+                      visibleMonths.map((month) => {
                         const year = month.yearOffset === 0 ? startYear : endYear;
                         const status = findEcolageStatus(
                           student.id,
@@ -455,7 +595,7 @@ export default function PaymentTrackingPage() {
                 {classStudents.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={3 + otherTypes.length + (ecolageType ? SCHOOL_MONTHS.length : 0)}
+                      colSpan={3 + visibleOtherTypes.length + (ecolageType ? visibleMonths.length : 0)}
                       className="text-center text-muted-foreground py-8"
                     >
                       Aucun élève dans cette classe
